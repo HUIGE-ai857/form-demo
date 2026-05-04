@@ -129,9 +129,16 @@ export function diffAppBaseline(label: string): { added: Record<string, number>;
   const addedTotal = Object.values(added).reduce((a,b)=>a+b,0)
   const removedTotal = Object.values(removed).reduce((a,b)=>a+b,0)
   const currentTotal = Object.values(current).reduce((a,b)=>a+b,0)
-  console.log(`%c[#app差异] ${label}: 当前=${currentTotal}, 新增=${addedTotal}, 移除=${removedTotal}`,
-    addedTotal > 0 ? 'color: #F56C6C' : 'color: #67C23A',
-    addedTotal > 0 ? { added, removed } : '')
+  if (addedTotal > 0 || removedTotal > 0) {
+    const addedList = Object.entries(added).map(([k, v]) => `${k}×${v}`)
+    const removedList = Object.entries(removed).map(([k, v]) => `${k}×${v}`)
+    console.log(`%c[#app差异] ${label}: 当前=${currentTotal}, 新增=${addedTotal}, 移除=${removedTotal}`,
+      'color: #F56C6C; font-weight: bold')
+    if (addedList.length) console.log('  新增:', addedList.join(', '))
+    if (removedList.length) console.log('  移除:', removedList.join(', '))
+  } else {
+    console.log(`%c[#app差异] ${label}: 当前=${currentTotal}, 无差异 ✓`, 'color: #67C23A')
+  }
   return { added, removed }
 }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
+import { ref, shallowRef, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 import type { FormRule } from '../types'
 import { generateFormGroups, getFormOption, getTableColumns, createEmptyRow } from '../utils/formSchemas'
 import { perfStore } from '../utils/store'
@@ -10,7 +10,7 @@ const GROUPS = 10
 const FIELDS_PER_GROUP = 20
 
 const formOption = getFormOption()
-const formGroups = ref<FormRule[][]>([])
+const formGroups = shallowRef<FormRule[][]>([])
 const formApis = ref<any[]>([])
 const tableColumns = getTableColumns('exam')
 const tableRows = ref<Record<string, any>[]>([])
@@ -50,7 +50,7 @@ onBeforeUnmount(() => {
     try { api.destroy() } catch (e) {}
   })
   formApis.value.length = 0
-  formGroups.value.length = 0
+  formGroups.value = []
   tableRows.value.length = 0
   if (rootRef.value) {
     rootRef.value.innerHTML = ''
