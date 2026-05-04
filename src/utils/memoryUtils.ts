@@ -67,6 +67,58 @@ export function preDestroyCleanup(): void {
   blurActiveElement()
 }
 
+/** 扫描 #app 内元素，按标签+类名分组统计 */
+export function scanAppElements(label: string): Record<string, number> {
+  const app = document.getElementById('app')
+  if (!app) return {}
+  const tagCounts: Record<string, number> = {}
+  const all = app.querySelectorAll('*')
+  all.forEach((el) => {
+    const tag = el.tagName.toLowerCase()
+    const cls = el.className && typeof el.className === 'string'
+      ? '.' + el.className.split(' ').filter(Boolean).slice(0, 2).join('.')
+      : ''
+    const id = el.id ? '#' + el.id : ''
+    const key = `${tag}${id}${cls}`
+    tagCounts[key] = (tagCounts[key] || 0) + 1
+  })
+  const total = Object.values(tagCounts).reduce((a, b) => a + b, 0)
+  console.log(`%c[#app扫描] ${label}: ${total} 个元素`, 'color: #E6A23C', tagCounts)
+  return tagCounts
+}
+
+/** 扫描整个文档的游离元素（不在 #app 内的 body 子元素） */
+export function scanOrphans(label: string): void {
+  const result: string[] = []
+  const bodyChildren = document.body.children
+  for (let i = 0; i < bodyChildren.length; i++) {
+    const el = bodyChildren[i]
+    if (el.id === 'app') continue
+    const tag = el.tagName.toLowerCase()
+    result.push(`<${tag}> ${el.className?.toString().slice(0, 60) || ''} ${el.id || ''}`)
+  }
+  // 同时扫描 #app 内可疑的游离元素
+  const app = document.getElementById('app')
+  if (app) {
+    const orphanSelectors = [
+      '.el-popper', '.el-select-dropdown', '.el-overlay', '.el-tooltip__popper',
+      '.el-dropdown__popper', '.el-picker__popper', '.el-message-box__wrapper',
+      '.n-base-select-menu', '.n-popover', '.n-tooltip', '.n-dropdown-menu',
+      '.v-binder-follower-container',
+    ]
+    orphanSelectors.forEach((sel) => {
+      app.querySelectorAll(sel).forEach((el) => {
+        result.push(`[#app内] <${el.tagName.toLowerCase()}> ${sel}`)
+      })
+    })
+  }
+  if (result.length > 0) {
+    console.log(`%c[游离扫描] ${label}: 发现 ${result.length} 个游离元素`, 'color: #F56C6C', result)
+  } else {
+    console.log(`%c[游离扫描] ${label}: 干净`, 'color: #67C23A')
+  }
+}
+
 /** 诊断工具：列出 body 下的游离元素（非 #app 直属） */
 export function logLeakedDOM(label: string): string[] {
   const leaked: string[] = []

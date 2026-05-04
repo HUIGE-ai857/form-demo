@@ -11,6 +11,7 @@ const FIELDS_PER_GROUP = 20
 
 const formOption = getFormOption()
 const formGroups = ref<FormRule[][]>([])
+const formApis = ref<any[]>([])
 const tableColumns = getTableColumns('exam')
 const tableRows = ref<Record<string, any>[]>([])
 
@@ -30,6 +31,7 @@ function removeRow(index: number) {
 
 onMounted(() => {
   formGroups.value = generateFormGroups('n-med', GROUPS, ['input', 'select', 'textarea'], FIELDS_PER_GROUP)
+  formApis.value = new Array(formGroups.value.length).fill(null)
   initTable()
   perfStore.totalFieldCount = totalFieldCount
   perfStore.formGroupCount = GROUPS
@@ -41,6 +43,8 @@ const rootRef = ref<HTMLElement | null>(null)
 
 onBeforeUnmount(() => {
   preDestroyCleanup()
+  formApis.value.forEach(api => { if (api?.destroy) try { api.destroy() } catch (e) {} })
+  formApis.value = []
   formGroups.value = []
   tableRows.value = []
   if (rootRef.value) {
@@ -59,7 +63,7 @@ onUnmounted(() => {
   <div ref="rootRef" class="tab-container">
     <div class="form-section" v-for="(rules, idx) in formGroups" :key="'n-med-' + idx">
       <div class="section-header">检查检验组 {{ idx + 1 }} - {{ rules.length }}个字段</div>
-      <NaiveFormCreate :rule="rules" :option="formOption" />
+      <NaiveFormCreate :rule="rules" :option="formOption" v-model:api="formApis[idx]" />
     </div>
 
     <div class="table-section">

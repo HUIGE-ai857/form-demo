@@ -11,6 +11,7 @@ const FIELDS_PER_GROUP = 20
 
 const formOption = getFormOption()
 const formGroups = ref<FormRule[][]>([])
+const formApis = ref<any[]>([])
 const tableColumns = getTableColumns('medication')
 const tableRows = ref<Record<string, any>[]>([])
 
@@ -30,6 +31,7 @@ function removeRow(index: number) {
 
 onMounted(() => {
   formGroups.value = generateFormGroups('pat', GROUPS, ['input', 'select', 'textarea'], FIELDS_PER_GROUP)
+  formApis.value = new Array(formGroups.value.length).fill(null)
   initTable()
   perfStore.totalFieldCount = totalFieldCount
   perfStore.formGroupCount = GROUPS
@@ -41,6 +43,8 @@ const rootRef = ref<HTMLElement | null>(null)
 
 onBeforeUnmount(() => {
   preDestroyCleanup()
+  formApis.value.forEach(api => { if (api?.destroy) try { api.destroy() } catch (e) { /* ignore */ } })
+  formApis.value = []
   formGroups.value = []
   tableRows.value = []
   if (rootRef.value) {
@@ -61,7 +65,7 @@ onUnmounted(() => {
       <div class="section-header">
         患者信息组 {{ idx + 1 }} - {{ rules.length }}个字段
       </div>
-      <ElFormCreate :rule="rules" :option="formOption" />
+      <ElFormCreate :rule="rules" :option="formOption" v-model:api="formApis[idx]" />
     </div>
 
     <div class="table-section">

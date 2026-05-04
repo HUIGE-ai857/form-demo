@@ -3,7 +3,7 @@ import { ref, watch, nextTick, onErrorCaptured, onMounted } from 'vue'
 import MemoryMonitor from './components/MemoryMonitor.vue'
 import TabContainer from './components/TabContainer.vue'
 import NaiveTabContainer from './components/NaiveTabContainer.vue'
-import { getMemoryInfo, takeSnapshot, formatBytes, getSnapshotHistory, captureDOMBaseline, logLeakedDOM, removeLeakedSinceBaseline, cleanOrphanedDOM } from './utils/memoryUtils'
+import { getMemoryInfo, takeSnapshot, formatBytes, getSnapshotHistory, captureDOMBaseline, logLeakedDOM, removeLeakedSinceBaseline, cleanOrphanedDOM, scanAppElements, scanOrphans } from './utils/memoryUtils'
 
 const uiMode = ref<'element' | 'naive'>('element')
 const activeTab = ref('patient')
@@ -15,6 +15,7 @@ const formWrapper = ref<HTMLElement | null>(null)
 onMounted(() => {
   takeSnapshot('页面初始化(无表单)')
   captureDOMBaseline()
+  scanAppElements('初始化基准')
 })
 
 onErrorCaptured((err) => {
@@ -61,6 +62,8 @@ async function toggleForms() {
     removeLeakedSinceBaseline()
     cleanOrphanedDOM()
     logLeakedDOM('nextTick+延迟 后')
+    scanAppElements('销毁清理后')
+    scanOrphans('销毁清理后')
   }
 
   setTimeout(() => {
@@ -71,6 +74,8 @@ async function toggleForms() {
       }
       removeLeakedSinceBaseline()
       cleanOrphanedDOM()
+      scanAppElements('2s二次清理后')
+      scanOrphans('2s二次清理后')
     }
 
     const after = getMemoryInfo()

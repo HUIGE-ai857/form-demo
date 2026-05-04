@@ -96,6 +96,65 @@ nextTick + 50ms (App.vue)
 
 ### 测试结果
 
+**未生效**，具体数据（Element Plus 模式）：
+
+| 阶段 | DOM 数量 | Heap |
+|---|---|---|
+| 初始化基准 | 70 | 75 MB |
+| 加载表单后 | 12,023 | 272 MB |
+| 销毁表单后 | 100 | 184 MB |
+| 与基线差值 | **+30** | +108 MB |
+
+关键发现：
+- body 层面清理成功：`removeLeakedSinceBaseline` 移除了 1 个元素 (`div#el-popper-container-1220`)
+- **30 个泄漏元素不在 body，而在 `#app` 内部**
+- `formWrapper.innerHTML = ''` 未能清除它们，说明泄漏元素在 wrapper 外部（可能是 Element Plus 内部缓存或 popper 容器）
+
+---
+
+## 第三轮优化 (v3)
+
+**提交**: 待提交
+
+### 分析
+
+v2 通过暴力清除 DOM（`innerHTML = ''`）仍留下 +30 个元素，说明问题不在 DOM 清除不彻底，而是：
+
+1. **form-create 内部实例未被正确销毁** — 组件卸载时 Vue 会销毁 DOM，但 form-create 内部的响应式 watcher/effect 可能持有 DOM 引用，阻止 GC
+2. **泄漏元素在 `#app` 内但 wrapper 外** — 来自 Element Plus 内部创建的共享容器（如 `.el-popper-container`）
+
+### 改动
+
+**核心：显式调用 `fApi.destroy()`**
+
+1. **6 个 tab 组件**：每个 form-create 组件添加 `v-model:api="formApis[idx]"`，在 `onBeforeUnmount` 中遍历调用 `api.destroy()` 逐个销毁实例
+
+```html
+<ElFormCreate :rule="rules" :option="formOption" v-model:api="formApis[idx]" />
+```
+
+```ts
+onBeforeUnmount(() => {
+  preDestroyCleanup()
+  formApis.value.forEach(api => { if (api?.destroy) try { api.destroy() } catch (e) {} })
+  formApis.value = []
+  formGroups.value = []
+  tableRows.value = []
+  if (rootRef.value) { rootRef.value.innerHTML = '' }
+})
+```
+
+2. **`memoryUtils.ts`**：新增诊断工具
+   - `scanAppElements(label)` — 扫描 `#app` 内所有元素按标签+类名分组统计，用于对比基准和销毁后的差异
+   - `scanOrphans(label)` — 扫描 body 和 `#app` 内的游离元素
+
+3. **`App.vue`**：诊断调用
+   - 初始化时 `scanAppElements('初始化基准')`
+   - 销毁后 `scanAppElements('销毁清理后')` + `scanOrphans('销毁清理后')`
+   - 2s 后再次扫描
+
+### 测试结果
+
 待测试。
 
 ---
