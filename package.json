@@ -1,0 +1,24 @@
+{
+  "name": "memory-leak-test",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@form-create/element-ui": "^3.2.42",
+    "@form-create/naive-ui": "^3.2.42",
+    "element-plus": "^2.9.1",
+    "naive-ui": "^2.44.1",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "~5.7.2",
+    "vite": "^6.0.5",
+    "vue-tsc": "^2.2.0"
+  }
+}
