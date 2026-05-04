@@ -37,10 +37,15 @@ onMounted(() => {
   takeSnapshot('Naive-Tab1-患者信息')
 })
 
+const rootRef = ref<HTMLElement | null>(null)
+
 onBeforeUnmount(() => {
   preDestroyCleanup()
   formGroups.value = []
   tableRows.value = []
+  if (rootRef.value) {
+    rootRef.value.innerHTML = ''
+  }
 })
 
 onUnmounted(() => {
@@ -51,7 +56,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="tab-container">
+  <div ref="rootRef" class="tab-container">
     <div class="form-section" v-for="(rules, idx) in formGroups" :key="'n-pat-' + idx">
       <div class="section-header" style="border-bottom-color: #18a058;">患者信息组 {{ idx + 1 }} - {{ rules.length }}个字段</div>
       <NaiveFormCreate :rule="rules" :option="formOption" />

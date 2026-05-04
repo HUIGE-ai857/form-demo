@@ -3,16 +3,18 @@ import { ref, watch, nextTick, onErrorCaptured, onMounted } from 'vue'
 import MemoryMonitor from './components/MemoryMonitor.vue'
 import TabContainer from './components/TabContainer.vue'
 import NaiveTabContainer from './components/NaiveTabContainer.vue'
-import { getMemoryInfo, takeSnapshot, formatBytes, getSnapshotHistory, cleanOrphanedDOM } from './utils/memoryUtils'
+import { getMemoryInfo, takeSnapshot, formatBytes, getSnapshotHistory, captureDOMBaseline, logLeakedDOM, removeLeakedSinceBaseline, cleanOrphanedDOM } from './utils/memoryUtils'
 
 const uiMode = ref<'element' | 'naive'>('element')
 const activeTab = ref('patient')
 const showForms = ref(false)
 const tabKey = ref(0)
 const switchCount = ref(0)
+const formWrapper = ref<HTMLElement | null>(null)
 
 onMounted(() => {
   takeSnapshot('页面初始化(无表单)')
+  captureDOMBaseline()
 })
 
 onErrorCaptured((err) => {
@@ -50,12 +52,27 @@ async function toggleForms() {
 
   await nextTick()
 
-  // 销毁表单后强制清理 UI 库产生的游离 DOM（popper/overlay 等）
+  // 销毁表单后：先等一小段时间让 UI 库处理内部 destroy，再逐层清理
   if (willDestroy) {
+    await new Promise(r => setTimeout(r, 50))
+    if (formWrapper.value) {
+      formWrapper.value.innerHTML = ''
+    }
+    removeLeakedSinceBaseline()
     cleanOrphanedDOM()
+    logLeakedDOM('nextTick+延迟 后')
   }
 
   setTimeout(() => {
+    // 二次清理：wrapper innerHTML + body 游离 + popper/overlay
+    if (willDestroy) {
+      if (formWrapper.value) {
+        formWrapper.value.innerHTML = ''
+      }
+      removeLeakedSinceBaseline()
+      cleanOrphanedDOM()
+    }
+
     const after = getMemoryInfo()
     takeSnapshot(`${action}后`)
     const delta = after.heapUsed - before.heapUsed
@@ -73,10 +90,6 @@ async function toggleForms() {
       }
     }
     console.groupEnd()
-    // 再次清理，防止 UI 库延迟渲染的游离 DOM
-    if (willDestroy) {
-      cleanOrphanedDOM()
-    }
   }, 2000)
 }
 
@@ -112,10 +125,12 @@ function switchMode(mode: 'element' | 'naive') {
     <div class="test-banner" v-if="showForms">🟢 表单可见</div>
     <div class="test-banner test-hidden" v-else>🔴 表单已销毁</div>
 
-    <TabContainer v-if="uiMode === 'element' && showForms" :key="'el-' + tabKey" :active-tab="activeTab" :tab-key="tabKey" />
-    <n-config-provider v-if="uiMode === 'naive' && showForms" :key="'naive-' + tabKey">
-      <NaiveTabContainer :active-tab="activeTab" :tab-key="tabKey" />
-    </n-config-provider>
+    <div ref="formWrapper" class="form-wrapper">
+      <TabContainer v-if="uiMode === 'element' && showForms" :key="'el-' + tabKey" :active-tab="activeTab" :tab-key="tabKey" />
+      <n-config-provider v-if="uiMode === 'naive' && showForms" :key="'naive-' + tabKey">
+        <NaiveTabContainer :active-tab="activeTab" :tab-key="tabKey" />
+      </n-config-provider>
+    </div>
   </div>
 </template>
 

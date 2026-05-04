@@ -37,10 +37,15 @@ onMounted(() => {
   takeSnapshot(`Tab3-检查用药`)
 })
 
+const rootRef = ref<HTMLElement | null>(null)
+
 onBeforeUnmount(() => {
   preDestroyCleanup()
   formGroups.value = []
   tableRows.value = []
+  if (rootRef.value) {
+    rootRef.value.innerHTML = ''
+  }
 })
 
 onUnmounted(() => {
@@ -51,7 +56,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="tab-container">
+  <div ref="rootRef" class="tab-container">
     <div class="form-section" v-for="(rules, idx) in formGroups" :key="'med-' + idx">
       <div class="section-header">检查检验组 {{ idx + 1 }} - {{ rules.length }}个字段</div>
       <ElFormCreate :rule="rules" :option="formOption" />
