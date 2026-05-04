@@ -3,7 +3,7 @@ import { ref, watch, nextTick, onErrorCaptured, onMounted } from 'vue'
 import MemoryMonitor from './components/MemoryMonitor.vue'
 import TabContainer from './components/TabContainer.vue'
 import NaiveTabContainer from './components/NaiveTabContainer.vue'
-import { getMemoryInfo, takeSnapshot, formatBytes, getSnapshotHistory } from './utils/memoryUtils'
+import { getMemoryInfo, takeSnapshot, formatBytes, getSnapshotHistory, cleanOrphanedDOM } from './utils/memoryUtils'
 
 const uiMode = ref<'element' | 'naive'>('element')
 const activeTab = ref('patient')
@@ -50,6 +50,11 @@ async function toggleForms() {
 
   await nextTick()
 
+  // 销毁表单后强制清理 UI 库产生的游离 DOM（popper/overlay 等）
+  if (willDestroy) {
+    cleanOrphanedDOM()
+  }
+
   setTimeout(() => {
     const after = getMemoryInfo()
     takeSnapshot(`${action}后`)
@@ -68,6 +73,10 @@ async function toggleForms() {
       }
     }
     console.groupEnd()
+    // 再次清理，防止 UI 库延迟渲染的游离 DOM
+    if (willDestroy) {
+      cleanOrphanedDOM()
+    }
   }, 2000)
 }
 

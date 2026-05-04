@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 import type { FormRule } from '../types'
 import { generateFormGroups, getFormOption, getTableColumns, createEmptyRow } from '../utils/formSchemas'
 import { perfStore } from '../utils/store'
-import { takeSnapshot } from '../utils/memoryUtils'
+import { takeSnapshot, preDestroyCleanup } from '../utils/memoryUtils'
 import InlineTable from './InlineTable.vue'
 
 const GROUPS = 10
@@ -35,6 +35,12 @@ onMounted(() => {
   perfStore.formGroupCount = GROUPS
   perfStore.tableRowCount = tableRows.value.length * tableColumns.length
   takeSnapshot(`Tab3-检查用药`)
+})
+
+onBeforeUnmount(() => {
+  preDestroyCleanup()
+  formGroups.value = []
+  tableRows.value = []
 })
 
 onUnmounted(() => {
