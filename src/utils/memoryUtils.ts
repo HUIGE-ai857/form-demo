@@ -87,6 +87,54 @@ export function scanAppElements(label: string): Record<string, number> {
   return tagCounts
 }
 
+/** 记录 #app 内元素基准（初始化时调用） */
+let appBaseline: Record<string, number> = {}
+export function captureAppBaseline(): void {
+  const app = document.getElementById('app')
+  if (!app) return
+  appBaseline = {}
+  app.querySelectorAll('*').forEach((el) => {
+    const tag = el.tagName.toLowerCase()
+    const cls = el.className && typeof el.className === 'string'
+      ? '.' + el.className.split(' ').filter(Boolean).slice(0, 2).join('.')
+      : ''
+    const id = el.id ? '#' + el.id : ''
+    const key = `${tag}${id}${cls}`
+    appBaseline[key] = (appBaseline[key] || 0) + 1
+  })
+  console.log(`%c[#app基准] 记录 ${Object.values(appBaseline).reduce((a,b)=>a+b,0)} 个元素`, 'color: #909399')
+}
+
+/** 与 #app 基准对比，报告差异 */
+export function diffAppBaseline(label: string): { added: Record<string, number>; removed: Record<string, number> } {
+  const current = scanAppElements('')  // 不打印，手动打印
+  const added: Record<string, number> = {}
+  const removed: Record<string, number> = {}
+
+  // 检查基准中有但当前没有的
+  for (const [key, count] of Object.entries(appBaseline)) {
+    const now = current[key] || 0
+    if (now < count) {
+      removed[key] = count - now
+    }
+  }
+  // 检查基准中没有但当前有的
+  for (const [key, count] of Object.entries(current)) {
+    const base = appBaseline[key] || 0
+    if (count > base) {
+      added[key] = count - base
+    }
+  }
+
+  const addedTotal = Object.values(added).reduce((a,b)=>a+b,0)
+  const removedTotal = Object.values(removed).reduce((a,b)=>a+b,0)
+  const currentTotal = Object.values(current).reduce((a,b)=>a+b,0)
+  console.log(`%c[#app差异] ${label}: 当前=${currentTotal}, 新增=${addedTotal}, 移除=${removedTotal}`,
+    addedTotal > 0 ? 'color: #F56C6C' : 'color: #67C23A',
+    addedTotal > 0 ? { added, removed } : '')
+  return { added, removed }
+}
+
 /** 扫描整个文档的游离元素（不在 #app 内的 body 子元素） */
 export function scanOrphans(label: string): void {
   const result: string[] = []

@@ -43,10 +43,21 @@ const rootRef = ref<HTMLElement | null>(null)
 
 onBeforeUnmount(() => {
   preDestroyCleanup()
-  formApis.value.forEach(api => { if (api?.destroy) try { api.destroy() } catch (e) {} })
-  formApis.value = []
-  formGroups.value = []
-  tableRows.value = []
+  formApis.value.forEach(api => {
+    if (!api) return
+    try { api.reset() } catch (e) {}
+    try { api.clearValidateState() } catch (e) {}
+    try { api.destroy() } catch (e) {}
+    try { Object.keys(api).forEach(k => { try { api[k] = null } catch (e) {} }) } catch (e) {}
+  })
+  formGroups.value.forEach(group => {
+    group.forEach(rule => { if (rule) try { Object.keys(rule).forEach(k => { try { (rule as any)[k] = null } catch (e) {} }) } catch (e) {} })
+    try { group.length = 0 } catch (e) {}
+  })
+  tableRows.value.forEach(row => { if (row) try { Object.keys(row).forEach(k => { try { row[k] = null } catch (e) {} }) } catch (e) {} })
+  formApis.value.length = 0
+  formGroups.value.length = 0
+  tableRows.value.length = 0
   if (rootRef.value) {
     rootRef.value.innerHTML = ''
   }

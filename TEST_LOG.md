@@ -155,6 +155,73 @@ onBeforeUnmount(() => {
 
 ### 测试结果
 
+**未生效**，具体数据（Element Plus 模式，`fApi.destroy()` 版本）：
+
+| 阶段 | DOM | Heap | #app 扫描 |
+|---|---|---|---|
+| 初始化基准 | 70 | 35 MB | - |
+| 加载表单后 | 12,023 | 249 MB | - |
+| 销毁清理后 | **100** | 143 MB | 65 元素 |
+| 2s 二次清理后 | **100** | 143 MB | 71 元素 (+6 snapshot 行) |
+| 与基线差值 | **+30** | +108 MB | - |
+
+关键发现：
+- **`fApi.destroy()` 对 DOM 泄漏无效**，调用前 DOM=100，调用后仍是 100
+- `[#app扫描]` 显示 65→71 的变化来自 MemoryMonitor 新增的快照历史行（`.snap-row` × 6 + 子元素）
+- body 清理成功（1 个 `#el-popper-container` 被移除），`#app` 内无游离 popper
+- **Heap 仍保留 108 MB**，说明 JS 对象引用链未被切断
+
+---
+
+## 第四轮优化 (v4)
+
+**提交**: 待提交
+
+### 分析
+
+v3 的 `fApi.destroy()` 未能切断 Heap 引用，说明 form-create 内部可能在全局 store 中缓存实例，或 `destroy()` 本身不彻底。需要从两个层面入手：
+
+1. **引用切断**：在 `destroy()` 之外，遍历 API 的所有属性强制置 null
+2. **数据深清**：formGroups/rules 中每个对象全部属性置 null，再清空数组
+3. **精确诊断**：新增 `[#app基准]` / `[#app差异]` 对比，精确定位泄漏元素
+
+### 改动
+
+1. **6 个 tab 组件 `onBeforeUnmount`**：
+
+```ts
+onBeforeUnmount(() => {
+  preDestroyCleanup()
+  formApis.value.forEach(api => {
+    if (!api) return
+    try { api.reset() } catch (e) {}
+    try { api.clearValidateState() } catch (e) {}
+    try { api.destroy() } catch (e) {}
+    // 遍历所有属性强制置 null
+    try { Object.keys(api).forEach(k => { try { api[k] = null } catch (e) {} }) } catch (e) {}
+  })
+  // 深度置空 rule 中每个对象的所有属性
+  formGroups.value.forEach(group => {
+    group.forEach(rule => { if (rule) try { Object.keys(rule).forEach(k => { try { (rule as any)[k] = null } catch (e) {} }) } catch (e) {} })
+    try { group.length = 0 } catch (e) {}
+  })
+  // 置空表格数据每个 cell
+  tableRows.value.forEach(row => { if (row) try { Object.keys(row).forEach(k => { try { row[k] = null } catch (e) {} }) } catch (e) {} })
+  formApis.value.length = 0
+  formGroups.value.length = 0
+  tableRows.value.length = 0
+  if (rootRef.value) { rootRef.value.innerHTML = '' }
+})
+```
+
+2. **`memoryUtils.ts`**：新增 `#app` 基准对比
+   - `captureAppBaseline()` — 初始化时记录 `#app` 内所有元素
+   - `diffAppBaseline(label)` — 对比当前与基准，输出新增/移除元素明细
+
+3. **`App.vue`**：初始化调用 `captureAppBaseline()`，销毁后调用 `diffAppBaseline()`
+
+### 测试结果
+
 待测试。
 
 ---
