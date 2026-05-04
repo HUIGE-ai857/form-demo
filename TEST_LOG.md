@@ -222,6 +222,52 @@ onBeforeUnmount(() => {
 
 ### 测试结果
 
+**运行时错误**，`Object.keys(api).forEach(k => { api[k] = null })` 导致 form-create 内部 `hasOwnProperty` 收到 null 而抛出 `TypeError`：
+```
+Uncaught (in promise) TypeError: Cannot convert undefined or null to object
+    at hasOwnProperty → hasProperty → tidyBool → CustomManager2.tidyOptions → mergeOptions → updateOptions
+```
+
+### 结论
+
+`api.destroy()` 后立即置空属性不可行，form-create 内部有异步 watcher 仍需访问这些属性。
+
+---
+
+## 第四轮 v4.1：修复 v4 错误 + v5 策略
+
+**提交**: 待提交
+
+### 分析
+
+v4 证明了激进置 null 会破坏 form-create 内部逻辑。需要从根本上隔离表单组件，而非试图清理残留。
+
+### v5 核心改动
+
+**表单 wrapper 由 `v-if` + `:key` 控制**：不再让 wrapper 永久存在然后清空 innerHTML，而是直接销毁重建：
+
+```html
+<!-- 旧：wrapper 一直存在，仅子组件由 v-if 控制 -->
+<div ref="formWrapper" class="form-wrapper">
+  <TabContainer v-if="showForms" ... />
+</div>
+
+<!-- 新：wrapper 自身由 v-if + :key 控制 -->
+<div v-if="showForms" :key="'fw-' + wrapperKey" class="form-wrapper">
+  <TabContainer v-if="uiMode === 'element'" ... />
+</div>
+```
+
+销毁时：`wrapperKey++` → Vue 销毁整个 wrapper div（含所有子 DOM、组件实例、watcher）→ 重建新的空 wrapper 供下次使用。
+
+### 其它修复
+
+- 移除 v4 中所有 `Object.keys(api).forEach(k => api[k] = null)` 和深度置 null
+- 保留 `api.reset()` + `api.clearValidateState()` + `api.destroy()`
+- 移除 `formWrapper.innerHTML = ''` 清理（wrapper 通过 v-if 销毁，无需手动清）
+
+### 测试结果
+
 待测试。
 
 ---

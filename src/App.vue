@@ -9,6 +9,7 @@ const uiMode = ref<'element' | 'naive'>('element')
 const activeTab = ref('patient')
 const showForms = ref(false)
 const tabKey = ref(0)
+const wrapperKey = ref(0)
 const switchCount = ref(0)
 const formWrapper = ref<HTMLElement | null>(null)
 
@@ -51,15 +52,15 @@ async function toggleForms() {
 
   showForms.value = !showForms.value
   tabKey.value++
+  if (willDestroy) {
+    wrapperKey.value++
+  }
 
   await nextTick()
 
-  // 销毁表单后：先等一小段时间让 UI 库处理内部 destroy，再逐层清理
+  // v5: wrapper 本身已通过 v-if + :key 销毁重建，只清理 body 游离元素
   if (willDestroy) {
     await new Promise(r => setTimeout(r, 50))
-    if (formWrapper.value) {
-      formWrapper.value.innerHTML = ''
-    }
     removeLeakedSinceBaseline()
     cleanOrphanedDOM()
     logLeakedDOM('nextTick+延迟 后')
@@ -69,11 +70,8 @@ async function toggleForms() {
   }
 
   setTimeout(() => {
-    // 二次清理：wrapper innerHTML + body 游离 + popper/overlay
+    // 二次清理
     if (willDestroy) {
-      if (formWrapper.value) {
-        formWrapper.value.innerHTML = ''
-      }
       removeLeakedSinceBaseline()
       cleanOrphanedDOM()
       scanAppElements('2s二次清理后')
@@ -133,9 +131,9 @@ function switchMode(mode: 'element' | 'naive') {
     <div class="test-banner" v-if="showForms">🟢 表单可见</div>
     <div class="test-banner test-hidden" v-else>🔴 表单已销毁</div>
 
-    <div ref="formWrapper" class="form-wrapper">
-      <TabContainer v-if="uiMode === 'element' && showForms" :key="'el-' + tabKey" :active-tab="activeTab" :tab-key="tabKey" />
-      <n-config-provider v-if="uiMode === 'naive' && showForms" :key="'naive-' + tabKey">
+    <div v-if="showForms" :key="'fw-' + wrapperKey" class="form-wrapper">
+      <TabContainer v-if="uiMode === 'element'" :key="'el-' + tabKey" :active-tab="activeTab" :tab-key="tabKey" />
+      <n-config-provider v-if="uiMode === 'naive'" :key="'naive-' + tabKey">
         <NaiveTabContainer :active-tab="activeTab" :tab-key="tabKey" />
       </n-config-provider>
     </div>
