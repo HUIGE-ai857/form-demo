@@ -3,9 +3,11 @@ import { ref, watch, nextTick, onErrorCaptured, onMounted } from 'vue'
 import MemoryMonitor from './components/MemoryMonitor.vue'
 import TabContainer from './components/TabContainer.vue'
 import NaiveTabContainer from './components/NaiveTabContainer.vue'
+import NativeElementTab from './components/NativeElementTab.vue'
+import NativeNaiveTab from './components/NativeNaiveTab.vue'
 import { getMemoryInfo, takeSnapshot, formatBytes, getSnapshotHistory, captureDOMBaseline, logLeakedDOM, removeLeakedSinceBaseline, cleanOrphanedDOM, scanAppElements, scanOrphans, captureAppBaseline, diffAppBaseline } from './utils/memoryUtils'
 
-const uiMode = ref<'element' | 'naive'>('element')
+const uiMode = ref<'element' | 'naive' | 'native-el' | 'native-naive'>('element')
 const activeTab = ref('patient')
 const showForms = ref(false)
 const tabKey = ref(0)
@@ -99,9 +101,9 @@ async function toggleForms() {
   }, 2000)
 }
 
-function switchMode(mode: 'element' | 'naive') {
+function switchMode(mode: 'element' | 'naive' | 'native-el' | 'native-naive') {
   if (uiMode.value === mode) return
-  if (showForms.value) { showForms.value = false; tabKey.value++ }
+  if (showForms.value) { showForms.value = false; tabKey.value++; wrapperKey.value++ }
   uiMode.value = mode
 }
 </script>
@@ -112,8 +114,10 @@ function switchMode(mode: 'element' | 'naive') {
 
     <div class="toolbar">
       <div class="mode-switch">
-        <button :class="['mode-btn', { active: uiMode === 'element' }]" @click="switchMode('element')">Element Plus</button>
-        <button :class="['mode-btn', { active: uiMode === 'naive' }]" @click="switchMode('naive')">Naive UI</button>
+        <button :class="['mode-btn', { active: uiMode === 'element' }]" @click="switchMode('element')">FC+El</button>
+        <button :class="['mode-btn', { active: uiMode === 'naive' }]" @click="switchMode('naive')">FC+Naive</button>
+        <button :class="['mode-btn', { active: uiMode === 'native-el' }]" @click="switchMode('native-el')">原生 El</button>
+        <button :class="['mode-btn', { active: uiMode === 'native-naive' }]" @click="switchMode('native-naive')">原生 Naive</button>
       </div>
       <el-button :type="showForms ? 'danger' : 'success'" @click="toggleForms">
         {{ showForms ? '销毁所有表单' : '加载所有表单' }}
@@ -121,7 +125,7 @@ function switchMode(mode: 'element' | 'naive') {
       <span class="hint">UI: {{ uiMode }} | showForms={{ showForms }}</span>
     </div>
 
-    <div class="simple-tabs">
+    <div class="simple-tabs" v-if="uiMode === 'element' || uiMode === 'naive'">
       <button v-for="tab in ['patient', 'diagnosis', 'medication']" :key="tab"
         :class="['tab-btn', { active: activeTab === tab }]" @click="activeTab = tab">
         {{ tabLabels[tab] }}
@@ -135,6 +139,10 @@ function switchMode(mode: 'element' | 'naive') {
       <TabContainer v-if="uiMode === 'element'" :key="'el-' + tabKey" :active-tab="activeTab" :tab-key="tabKey" />
       <n-config-provider v-if="uiMode === 'naive'" :key="'naive-' + tabKey">
         <NaiveTabContainer :active-tab="activeTab" :tab-key="tabKey" />
+      </n-config-provider>
+      <NativeElementTab v-if="uiMode === 'native-el'" :key="'nel-' + tabKey" />
+      <n-config-provider v-if="uiMode === 'native-naive'" :key="'nnaive-' + tabKey">
+        <NativeNaiveTab />
       </n-config-provider>
     </div>
   </div>
