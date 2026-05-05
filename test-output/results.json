@@ -1,0 +1,285 @@
+{
+  "config": {
+    "configFile": "/Users/a123/开发/form-demo/playwright.config.ts",
+    "rootDir": "/Users/a123/开发/form-demo/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/a123/开发/form-demo/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/a123/开发/form-demo/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 300000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json",
+        {
+          "outputFile": "test-output/results.json"
+        }
+      ],
+      [
+        "html",
+        {
+          "outputFolder": "test-output/html",
+          "open": "never"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.59.1",
+    "workers": 4,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "memory-leak.spec.ts",
+      "file": "memory-leak.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "内存泄漏对比测试",
+          "file": "memory-leak.spec.ts",
+          "line": 179,
+          "column": 6,
+          "specs": [
+            {
+              "title": "完整 4 模式测试并生成报告",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 300000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 101465,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "\n══ FC+El ══\n"
+                        },
+                        {
+                          "text": "  基线: DOM=73, Heap=20.27 MB\n"
+                        },
+                        {
+                          "text": "  加载: DOM=12033, Heap=217.98 MB\n"
+                        },
+                        {
+                          "text": "  交互: 输入框...\n"
+                        },
+                        {
+                          "text": "  交互: 下拉框...\n"
+                        },
+                        {
+                          "text": "  交互: 表格...\n"
+                        },
+                        {
+                          "text": "  销毁: DOM=103, Heap=612.72 MB\n"
+                        },
+                        {
+                          "text": "  等待 GC...\n"
+                        },
+                        {
+                          "text": "  GC后: DOM=103, Heap=26.67 MB\n"
+                        },
+                        {
+                          "text": "  结论: DOM残留=30, Heap残留=6.4 MB\n"
+                        },
+                        {
+                          "text": "\n══ FC+Naive ══\n"
+                        },
+                        {
+                          "text": "  基线: DOM=103, Heap=26.79 MB\n"
+                        },
+                        {
+                          "text": "  加载: DOM=11280, Heap=142.3 MB\n"
+                        },
+                        {
+                          "text": "  交互: 输入框...\n"
+                        },
+                        {
+                          "text": "  交互: 下拉框...\n"
+                        },
+                        {
+                          "text": "  交互: 表格...\n"
+                        },
+                        {
+                          "text": "  销毁: DOM=122, Heap=29.78 MB\n"
+                        },
+                        {
+                          "text": "  等待 GC...\n"
+                        },
+                        {
+                          "text": "  GC后: DOM=122, Heap=28.75 MB\n"
+                        },
+                        {
+                          "text": "  结论: DOM残留=19, Heap残留=1.95 MB\n"
+                        },
+                        {
+                          "text": "\n══ 原生El ══\n"
+                        },
+                        {
+                          "text": "  基线: DOM=118, Heap=28.9 MB\n"
+                        },
+                        {
+                          "text": "  加载: DOM=11443, Heap=168.9 MB\n"
+                        },
+                        {
+                          "text": "  交互: 输入框...\n"
+                        },
+                        {
+                          "text": "  交互: 下拉框...\n"
+                        },
+                        {
+                          "text": "  交互: 表格...\n"
+                        },
+                        {
+                          "text": "  销毁: DOM=118, Heap=204.47 MB\n"
+                        },
+                        {
+                          "text": "  等待 GC...\n"
+                        },
+                        {
+                          "text": "  GC后: DOM=118, Heap=29.11 MB\n"
+                        },
+                        {
+                          "text": "  结论: DOM残留=0, Heap残留=217.83 KB\n"
+                        },
+                        {
+                          "text": "\n══ 原生Naive ══\n"
+                        },
+                        {
+                          "text": "  基线: DOM=118, Heap=29.22 MB\n"
+                        },
+                        {
+                          "text": "  加载: DOM=10667, Heap=128.66 MB\n"
+                        },
+                        {
+                          "text": "  交互: 输入框...\n"
+                        },
+                        {
+                          "text": "  交互: 下拉框...\n"
+                        },
+                        {
+                          "text": "  交互: 表格...\n"
+                        },
+                        {
+                          "text": "  销毁: DOM=118, Heap=142 MB\n"
+                        },
+                        {
+                          "text": "  等待 GC...\n"
+                        },
+                        {
+                          "text": "  GC后: DOM=118, Heap=29.58 MB\n"
+                        },
+                        {
+                          "text": "  结论: DOM残留=0, Heap残留=365.46 KB\n"
+                        },
+                        {
+                          "text": "\n\n\n"
+                        },
+                        {
+                          "text": "╔══════════════════════════════════════╗\n"
+                        },
+                        {
+                          "text": "║        DOM 泄漏对比结果              ║\n"
+                        },
+                        {
+                          "text": "╠══════════════════════════════════════╣\n"
+                        },
+                        {
+                          "text": "║ FC+El    DOM残留:   30              ║\n"
+                        },
+                        {
+                          "text": "║ 原生El    DOM残留:    0              ║\n"
+                        },
+                        {
+                          "text": "║ FC+Naive DOM残留:   19              ║\n"
+                        },
+                        {
+                          "text": "║ 原生Naive DOM残留:    0              ║\n"
+                        },
+                        {
+                          "text": "╠══════════════════════════════════════╣\n"
+                        },
+                        {
+                          "text": "║ El 泄漏源: form-create               ║\n"
+                        },
+                        {
+                          "text": "║ Naive 泄漏源: form-create            ║\n"
+                        },
+                        {
+                          "text": "╚══════════════════════════════════════╝\n"
+                        },
+                        {
+                          "text": "\n报告已生成: test-output/memory-leak-report.md\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-05T04:10:14.750Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "2b9ece94fb2c76da38f7-564715c79526245bba45",
+              "file": "memory-leak.spec.ts",
+              "line": 182,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-05-05T04:10:14.299Z",
+    "duration": 102058.447,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

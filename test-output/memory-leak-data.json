@@ -1,0 +1,65 @@
+{
+  "timestamp": "2026-05-05T04:11:56.297Z",
+  "results": [
+    {
+      "mode": "FC+El",
+      "btnText": "FC+El",
+      "baselineHeap": 21254275,
+      "baselineDOM": 73,
+      "loadedHeap": 228569950,
+      "loadedDOM": 12033,
+      "postDestroyDOM": 103,
+      "afterGCHeap": 27964188,
+      "afterGCDOM": 103,
+      "heapDelta": 207315675,
+      "heapRetained": 6709913,
+      "domRetained": 30
+    },
+    {
+      "mode": "FC+Naive",
+      "btnText": "FC+Naive",
+      "baselineHeap": 28096405,
+      "baselineDOM": 103,
+      "loadedHeap": 149208251,
+      "loadedDOM": 11280,
+      "postDestroyDOM": 122,
+      "afterGCHeap": 30143494,
+      "afterGCDOM": 122,
+      "heapDelta": 121111846,
+      "heapRetained": 2047089,
+      "domRetained": 19
+    },
+    {
+      "mode": "原生El",
+      "btnText": "原生 El",
+      "baselineHeap": 30298663,
+      "baselineDOM": 118,
+      "loadedHeap": 177099264,
+      "loadedDOM": 11443,
+      "postDestroyDOM": 118,
+      "afterGCHeap": 30521721,
+      "afterGCDOM": 118,
+      "heapDelta": 146800601,
+      "heapRetained": 223058,
+      "domRetained": 0
+    },
+    {
+      "mode": "原生Naive",
+      "btnText": "原生 Naive",
+      "baselineHeap": 30641556,
+      "baselineDOM": 118,
+      "loadedHeap": 134905068,
+      "loadedDOM": 10667,
+      "postDestroyDOM": 118,
+      "afterGCHeap": 31015783,
+      "afterGCDOM": 118,
+      "heapDelta": 104263512,
+      "heapRetained": 374227,
+      "domRetained": 0
+    }
+  ],
+  "analysis": {
+    "elDomLeakSource": "form-create",
+    "naiveDomLeakSource": "form-create"
+  }
+}

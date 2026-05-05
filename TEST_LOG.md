@@ -345,3 +345,65 @@ formGroups 的数据（rule 数组）在 `onMounted` 中一次性生成后不再
 3. 加载表单 → 交互 → 销毁表单
 4. 手动触发 GC（DevTools → Performance → 点击垃圾桶图标）
 5. 再拍一次快照，对比两次的 "Detached DOM" 节点数
+
+---
+
+## Playwright 自动化对比测试
+
+**提交**: `c7f4689` (原生组件) + 后续测试脚本
+
+### 测试设计
+
+新增 `NativeElementTab` 和 `NativeNaiveTab` 两个页面，渲染与 form-create 版本同等数量（~600）的原生 `el-input`/`el-select`/`n-input`/`n-select`。通过 Playwright 自动化脚本对比 4 种模式的 DOM/Heap 残留。
+
+### 测试结果 (Chromium headless, `--enable-precise-memory-info`)
+
+| 模式 | 基线 DOM | 加载峰值 | GC后 DOM | **DOM 残留** | 基线 Heap | GC后 Heap | Heap 残留 |
+|------|----------|----------|----------|-------------|-----------|-----------|-----------|
+| FC + Element Plus | 73 | 12,033 | 103 | **+30** | 20.3 MB | 26.7 MB | 6.4 MB |
+| FC + Naive UI | 103 | 11,280 | 122 | **+19** | 26.8 MB | 28.8 MB | 2.0 MB |
+| **原生 Element Plus** | 118 | 11,443 | 118 | **0** | 28.9 MB | 29.1 MB | 218 KB |
+| **原生 Naive UI** | 118 | 10,667 | 118 | **0** | 29.2 MB | 29.6 MB | 365 KB |
+
+### 结论
+
+```
+╔══════════════════════════════════════╗
+║        DOM 泄漏对比结果              ║
+╠══════════════════════════════════════╣
+║ FC+El    DOM残留:   30              ║
+║ 原生El    DOM残留:    0              ║
+║ FC+Naive DOM残留:   19              ║
+║ 原生Naive DOM残留:    0              ║
+╠══════════════════════════════════════╣
+║ El 泄漏源:  form-create              ║
+║ Naive 泄漏源: form-create            ║
+╚══════════════════════════════════════╝
+```
+
+**✅ 结论确认：泄漏源是 form-create，不是 Element Plus 或 Naive UI。**
+
+- 原生 Element Plus 和 Naive UI 组件在销毁后 DOM 完全回到基线（残留 = 0）
+- form-create 版本存在 +19~30 的 DOM 残留
+- Heap 方面，GC 后 4 个模式都能回到基线附近（< 7 MB），说明 JS 对象引用最终能被回收
+- 但 form-create 版本的 DOM 节点始终比基线多 19-30 个，这些是 form-create 内部创建的游离 DOM
+
+### 测试脚本
+
+- 测试文件: `tests/memory-leak.spec.ts`
+- Playwright 配置: `playwright.config.ts`
+- 报告输出: `test-output/memory-leak-report.md`
+- JSON 数据: `test-output/memory-leak-data.json`
+
+### 运行方式
+
+```bash
+# 1. 确保 dev server 在运行
+npm run dev
+
+# 2. 运行测试
+npx playwright test --config playwright.config.ts
+
+# 3. 查看报告
+cat test-output/memory-leak-report.md
+```
