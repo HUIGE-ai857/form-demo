@@ -58,24 +58,27 @@ async function toggleForms() {
     wrapperKey.value++
   }
 
+  return
+
   await nextTick()
 
   // v5: wrapper 本身已通过 v-if + :key 销毁重建，只清理 body 游离元素
   if (willDestroy) {
     await new Promise(r => setTimeout(r, 50))
-    removeLeakedSinceBaseline()
-    cleanOrphanedDOM()
+    // removeLeakedSinceBaseline()
+    // cleanOrphanedDOM()
     logLeakedDOM('nextTick+延迟 后')
     scanAppElements('销毁清理后')
     diffAppBaseline('销毁清理后')
     scanOrphans('销毁清理后')
   }
 
+  
   setTimeout(() => {
     // 二次清理
     if (willDestroy) {
-      removeLeakedSinceBaseline()
-      cleanOrphanedDOM()
+      // removeLeakedSinceBaseline()
+      // cleanOrphanedDOM()
       scanAppElements('2s二次清理后')
       diffAppBaseline('2s二次清理后')
       scanOrphans('2s二次清理后')

@@ -42,25 +42,26 @@ onMounted(() => {
 const rootRef = ref<HTMLElement | null>(null)
 
 onBeforeUnmount(() => {
-  preDestroyCleanup()
-  formApis.value.forEach(api => {
-    if (!api) return
-    try { api.reset() } catch (e) {}
-    try { api.clearValidateState() } catch (e) {}
-    try { api.destroy() } catch (e) {}
-  })
-  formApis.value.length = 0
-  formGroups.value = []
-  tableRows.value.length = 0
-  if (rootRef.value) {
-    rootRef.value.innerHTML = ''
-  }
+  // debugger
+  // preDestroyCleanup()
+  // formApis.value.forEach(api => {
+  //   if (!api) return
+  //   try { api.reset() } catch (e) {}
+  //   try { api.clearValidateState() } catch (e) {}
+  //   try { api.destroy() } catch (e) {}
+  // })
+  // formApis.value.length = 0
+  // formGroups.value = []
+  // tableRows.value.length = 0
+  // if (rootRef.value) {
+  //   rootRef.value.innerHTML = ''
+  // }
 })
 
 onUnmounted(() => {
-  perfStore.totalFieldCount = 0
-  perfStore.formGroupCount = 0
-  perfStore.tableRowCount = 0
+  // perfStore.totalFieldCount = 0
+  // perfStore.formGroupCount = 0
+  // perfStore.tableRowCount = 0
 })
 </script>
 
