@@ -120,7 +120,7 @@ onUnmounted(() => {
   <div ref="rootRef" class="tab-container">
     <div class="section" v-for="(fields, idx) in groups" :key="'nel-g-' + idx">
       <div class="section-header">原生 El 组件组 {{ idx + 1 }} - {{ fields.length }}个字段</div>
-      <el-form label-width="100px" size="small">
+      <el-form label-width="100px" size="small" autocomplete="off">
         <el-row :gutter="16">
           <el-col :span="8" v-for="f in fields" :key="f.field">
             <el-form-item :label="f.label">
@@ -129,6 +129,8 @@ onUnmounted(() => {
                 v-model="formData[f.field]"
                 :placeholder="'请输入' + f.label"
                 clearable
+                autocomplete="off"
+                spellcheck="false"
               />
               <el-select
                 v-else-if="f.type === 'select'"
@@ -146,6 +148,8 @@ onUnmounted(() => {
                 type="textarea"
                 :rows="2"
                 :placeholder="'请输入' + f.label"
+                autocomplete="off"
+                spellcheck="false"
               />
             </el-form-item>
           </el-col>

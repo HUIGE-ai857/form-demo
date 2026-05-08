@@ -44,7 +44,7 @@ function handleRemove(index: number) {
             </el-select>
           </template>
           <template v-else>
-            <el-input v-model="row[col.prop]" placeholder="请输入" size="small" />
+            <el-input v-model="row[col.prop]" placeholder="请输入" size="small" autocomplete="off" spellcheck="false" />
           </template>
         </template>
       </el-table-column>

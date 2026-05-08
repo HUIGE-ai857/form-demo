@@ -128,6 +128,7 @@ onUnmounted(() => {
               v-model:value="formData[f.field]"
               :placeholder="'请输入' + f.label"
               clearable
+              :input-props="{ autocomplete: 'off', spellcheck: false }"
             />
             <n-select
               v-else-if="f.type === 'select'"
@@ -142,6 +143,7 @@ onUnmounted(() => {
               type="textarea"
               :rows="2"
               :placeholder="'请输入' + f.label"
+              :input-props="{ autocomplete: 'off', spellcheck: false }"
             />
           </n-form-item-gi>
         </n-grid>

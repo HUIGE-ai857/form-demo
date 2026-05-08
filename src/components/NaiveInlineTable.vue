@@ -42,6 +42,7 @@ const tableColumns: DataTableColumn[] = props.columns.map((col) => ({
       'onUpdate:value': (v: any) => { row[col.prop] = v },
       placeholder: '请输入',
       size: 'small',
+      inputProps: { autocomplete: 'off', spellcheck: false },
     })
   },
 }))

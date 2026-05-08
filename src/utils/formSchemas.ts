@@ -14,7 +14,7 @@ function createField(type: string, prefix: string, groupIdx: number, fieldIdx: n
         field,
         title: `${label} ${idx + 1}`,
         value: '',
-        props: { placeholder: `请输入${label}`, clearable: true },
+        props: { placeholder: `请输入${label}`, clearable: true, autocomplete: 'off', spellcheck: false },
       }
     }
     case 'select': {
@@ -48,6 +48,8 @@ function createField(type: string, prefix: string, groupIdx: number, fieldIdx: n
           type: 'textarea',
           rows: 2,
           placeholder: `请输入${label}`,
+          autocomplete: 'off',
+          spellcheck: false,
         },
       }
     }
