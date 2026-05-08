@@ -3,7 +3,7 @@ import { ref, shallowRef, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 import type { FormRule } from '../types'
 import { generateFormGroups, getFormOption, getTableColumns, createEmptyRow } from '../utils/formSchemas'
 import { perfStore } from '../utils/store'
-import { takeSnapshot, preDestroyCleanup, cleanOrphanedDOM } from '../utils/memoryUtils'
+import { takeSnapshot, preDestroyCleanup } from '../utils/memoryUtils'
 import NaiveInlineTable from './NaiveInlineTable.vue'
 
 const GROUPS = 10
@@ -39,23 +39,11 @@ onMounted(() => {
   takeSnapshot('Naive-Tab1-患者信息')
 })
 
-const rootRef = ref<HTMLElement | null>(null)
-
 onBeforeUnmount(() => {
   preDestroyCleanup()
-  formApis.value.forEach(api => {
-    if (!api) return
-    try { api.reset() } catch (e) {}
-    try { api.clearValidateState() } catch (e) {}
-    try { api.destroy() } catch (e) {}
-  })
-  cleanOrphanedDOM()
   formApis.value.length = 0
   formGroups.value = []
   tableRows.value.length = 0
-  if (rootRef.value) {
-    rootRef.value.innerHTML = ''
-  }
 })
 
 onUnmounted(() => {
@@ -66,7 +54,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="rootRef" class="tab-container">
+  <div class="tab-container">
     <div class="form-section" v-for="(rules, idx) in formGroups" :key="'n-pat-' + idx">
       <div class="section-header" style="border-bottom-color: #18a058;">患者信息组 {{ idx + 1 }} - {{ rules.length }}个字段</div>
       <NaiveFormCreate :rule="rules" :option="formOption" v-model:api="formApis[idx]" />

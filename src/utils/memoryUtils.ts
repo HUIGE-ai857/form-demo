@@ -26,69 +26,9 @@ export function redirectFocus(): void {
   sink.focus()
 }
 
-/** 强制清理 Element Plus 和 Naive UI 产生的游离 DOM（popper/overlay 等） */
-export function cleanOrphanedDOM(): void {
-  // Element Plus 游离元素
-  const elSelectors = [
-    '.el-popper',
-    '.el-select-dropdown',
-    '.el-overlay',
-    '.el-tooltip__popper',
-    '.el-dropdown__popper',
-    '.el-picker__popper',
-    '.el-popover',
-    '.el-message-box__wrapper',
-    '.el-dialog__wrapper',
-    '.el-drawer__wrapper',
-    '.el-cascader__dropdown',
-    '.el-autocomplete__dropdown',
-    '.el-color-dropdown',
-    '.el-time-panel',
-    '.el-date-picker',
-    '.el-image-viewer__wrapper',
-  ]
-  elSelectors.forEach((sel) => {
-    document.querySelectorAll(sel).forEach((el) => el.remove())
-  })
-
-  // Naive UI 游离元素
-  const naiveSelectors = [
-    '.n-base-select-menu',
-    '.n-popover',
-    '.n-tooltip',
-    '.n-dropdown-menu',
-    '.n-date-panel',
-    '.n-time-picker-panel',
-    '.n-color-picker-panel',
-    '.n-modal-container',
-    '.n-drawer-container',
-    '.n-message-container',
-    '.n-notification-container',
-  ]
-  naiveSelectors.forEach((sel) => {
-    document.querySelectorAll(sel).forEach((el) => el.remove())
-  })
-
-  // Naive UI LazyTeleport 持久容器 — 创建后永不自行销毁，销毁时无条件移除
-  document.querySelectorAll('.v-binder-follower-container').forEach((el) => el.remove())
-}
-
-/** 销毁表单前的综合清理：blur + 删除浮层 + rAF 延迟二次清扫 */
+/** 销毁表单前的焦点重定向：避免 Chromium 在表单销毁时持有已移除元素的焦点引用 */
 export function preDestroyCleanup(): void {
-  // 焦点重定向到持久元素：避免 Chromium 在表单销毁时持有已移除元素的焦点引用
   redirectFocus()
-
-  // 立即删除 Element Plus 浮层（不隐藏，直接移除）
-  // document.querySelectorAll('.el-select-dropdown').forEach((el) => el.remove())
-  // document.querySelectorAll('.el-popper.is-light').forEach((el) => el.remove())
-
-  // // 立即删除 Naive UI 浮层
-  // document.querySelectorAll('.n-base-select-menu').forEach((el) => el.remove())
-
-  // rAF 延迟二次清扫：给浏览器一帧时间处理 blur 事件释放焦点引用
-  // requestAnimationFrame(() => {
-    // cleanOrphanedDOM()
-  // })
 }
 
 /** 扫描 #app 内元素，按标签+类名分组统计 */

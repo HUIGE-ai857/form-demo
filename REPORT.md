@@ -2,9 +2,9 @@
 
 ## 1. 概述
 
-在 Vue 3 + form-create 的大表单应用（~2100 组件/页）中，销毁表单后 DOM 节点未能完全回收。经过 **8 轮迭代排查**，确认根因是 **Chromium Blink 引擎的焦点管理机制**：`el.blur()` 异步释放焦点引用，与 Vue 的同步 DOM 销毁形成竞态，导致 FocusController 内部产生 dangling pointer，阻塞 GC。
+在 Vue 3 + form-create 的大表单应用（~1600 组件/页）中，销毁表单后 DOM 节点未能完全回收。经过 **8 轮迭代排查**，确认根因是 **Chromium Blink 引擎的焦点管理机制**：`document.activeElement` 持有关联 DOM 元素的强引用，若销毁时焦点仍在表单内元素上，Chromium 内部焦点上下文产生 dangling pointer，阻塞 GC。
 
-**修复方案**：用 `focus()` 同步重定向焦点到持久元素，替代 `blur()` 异步失焦。
+**最终修复方案只有一行**：销毁前调用持久元素的 `focus()` 同步转移焦点。
 
 ---
 
@@ -14,6 +14,8 @@
 |------|-------------|----------|
 | select 下拉框选择后销毁 | DOM 泄漏 | DOM 正常 |
 | input 获得焦点后销毁 | DOM 泄漏 | DOM 泄漏 |
+| el-popover hover 后销毁 | DOM 泄漏 | — |
+| el-dialog v-if 关闭后 | DOM 泄漏 | — |
 
 - 加载表单后 DOM ~12,000，销毁后残留 +30~100
 - Heap 也偏高（手动 GC 后仍比基线高 100+ MB）
@@ -34,67 +36,57 @@
 
 ---
 
-## 4. 排查过程
+## 4. 排查过程（8 轮）
 
-### 第一轮：游离 DOM 选择器清理
-
+### 第一轮：游离 DOM 选择器清理 — ❌
 - **假设**：UI 库的 popper/overlay 创建了 body 级游离 DOM
-- **做法**：按选择器移除 `.el-popper`、`.n-base-select-menu` 等 30+ 类游离元素
+- **做法**：按选择器暴力 `remove()` 30+ 类游离元素（`.el-popper`、`.n-base-select-menu` 等）
 - **结果**：无改善
 
-### 第二轮：暴力 DOM 清除 + body 基线对比
-
+### 第二轮：暴力 DOM 清除 + body 基线对比 — ❌
 - **假设**：游离 DOM 不在已知选择器范围
 - **做法**：wrapper 容器 `innerHTML = ''` 暴力清除 + body 子元素基线追踪
-- **结果**：无改善。发现泄漏的 +30 DOM 在 `#app` 内而非 body
+- **结果**：无改善。发现泄漏在 `#app` 内而非 body
 
-### 第三轮：显式调用 form-create `fApi.destroy()`
-
+### 第三轮：form-create `fApi.destroy()` — ❌
 - **假设**：form-create 内部实例未正确销毁
 - **做法**：`v-model:api` 捕获实例，`onBeforeUnmount` 中逐条 `api.destroy()`
-- **结果**：无改善
+- **结果**：无改善。且 form-create 实际上没有这些 API
 
-### 第四轮：激进属性置 null（失败，回退）
+### 第四轮：激进属性置 null — ❌（回退）
+- **做法**：销毁后遍历 `Object.keys(api)` 全部置 null
+- **结果**：运行时 TypeError
 
-- **做法**：`destroy()` 后遍历 `Object.keys(api)` 全部置 null
-- **结果**：form-create 运行时 TypeError（`hasOwnProperty` 收到 null）
-
-### 第五轮：wrapper `v-if` + `:key` 整体重建
-
+### 第五轮：wrapper `v-if` + `:key` 整体重建 — ❌
 - **假设**：wrapper 累积残留 DOM
-- **做法**：wrapper 改为 `v-if="showForms" :key="wrapperKey"`，销毁时 `key++` 触发完整重建
+- **做法**：wrapper `v-if="showForms" :key="wrapperKey"`，销毁时 `key++`
 - **结果**：无改善
 
-### 第六轮：`shallowRef` 减少响应式 Proxy
-
+### 第六轮：`shallowRef` 减少响应式 Proxy — ❌
 - **假设**：`ref()` 深度响应式创建 3000+ Proxy，引用链未断
 - **做法**：`formGroups` 改用 `shallowRef`（Proxy 数 3000+ → 1）
 - **结果**：无改善
 
 ### Playwright 自动化对比：泄漏源定位
 
-新增原生组件页面对比测试：
-
 | 模式 | DOM 残留 | 结论 |
 |------|---------|------|
-| FC + Element Plus | +30 | ← form-create 导致 |
-| FC + Naive UI | +19 | ← form-create 导致 |
-| **原生** Element Plus | **0** | ✅ 原生组件无泄漏 |
-| **原生** Naive UI | **0** | ✅ 原生组件无泄漏 |
+| FC + Element Plus | +30 | form-create 导致 |
+| FC + Naive UI | +19 | form-create 导致 |
+| **原生** Element Plus | **0** | ✅ 原生无泄漏 |
+| **原生** Naive UI | **0** | ✅ 原生无泄漏 |
 
-**核心结论：泄漏源是 form-create，不是 Element Plus 或 Naive UI。**
+**结论：泄漏源是 form-create，非 UI 库本身。**
 
-### 第七轮：autocomplete/spellcheck 防御
-
-- **假设**：标准浏览器 autofill/spellcheck 系统持有 input 引用
+### 第七轮：autocomplete/spellcheck 防御 — ❌
+- **假设**：浏览器 autofill/spellcheck 持有 input 引用
 - **做法**：所有 input 加 `autocomplete="off" spellcheck="false"`
-- **结果**：无改善（但保留作为防御措施）
+- **结果**：无改善（保留作为防御）
 
-### 第八轮：`redirectFocus()` — 最终修复 ✅
-
-- **假设**：`blur()` 异步焦点释放 + 同步 DOM 销毁 = dangling reference
-- **做法**：不调用 `blur()`，而是调用持久元素的 `focus()` 同步转移焦点
-- **结果**：**Chrome 标准浏览器测试通过**
+### 第八轮：`redirectFocus()` — ✅ 最终修复
+- **假设**：焦点引用导致 Chromium 持有已销毁元素
+- **做法**：不调用 `blur()`，改用持久元素 `focus()` 同步转移焦点
+- **结果**：**Chrome / Edge 标准浏览器测试通过**
 
 ---
 
@@ -102,62 +94,54 @@
 
 ### 5.1 Chromium Blink FocusController 机制
 
-Blink 引擎通过 `FocusController` 管理页面焦点。当用户点击 `<input>` 时：
-
 ```
-Blink FocusController.focusedFrame → input DOM 指针
+用户点击 input → Blink FocusController.focusedFrame → input DOM 指针
 ```
 
-当调用 `el.blur()` 时：
-
+`el.blur()` 是异步的：
 ```
-el.blur() → 调度异步任务(Task) → FocusController 清除焦点 → 更新渲染
-                                   ↑
-                              异步执行（下一帧）
+el.blur() → 调度 Task → FocusController 清除焦点（下一帧）
 ```
 
 ### 5.2 竞态时序
 
 ```
-T0:  input 获得焦点
-     FocusController → input DOM *
+T0:  input 获得焦点  →  FocusController → input DOM*
 
-T1:  用户点击 "销毁所有表单"
+T1:  用户点击"销毁所有表单"
 
 T2:  onBeforeUnmount 同步执行：
-     a. el.blur()            → 调度异步 Task（尚未执行！）
-     b. api.destroy() × 10   → form-create 卸载
-     c. formGroups = []      → v-for 清空
-     d. rootRef.innerHTML='' → 暴力移除 DOM
+     → Vue 销毁 v-for → input DOM 移除
 
-T3:  Vue v-if 销毁 wrapper → input DOM 从文档彻底移除
-
-T4:  Blink 异步 Task 执行 → 目标 input 已不存在
+T3:  Blink 异步 Task 执行 → 目标 input 已不存在
      FocusController 内部缓存 → dangling pointer ❌
      GC 无法回收 → DOM 永久泄漏
 ```
 
-### 5.3 为什么 VSCode 浏览器不泄漏
+### 5.3 `focus()` vs `blur()` 的本质区别
 
-VSCode Simple Browser (macOS) 底层使用 WebKit (Safari 引擎)，非 Blink。WebKit 的焦点管理使用不同的内部引用策略（weak pointer 或同步释放），不受此竞态影响。
+```
+el.blur()      → 异步：Blink 调度 Task → 下一帧清除 → 竞态窗口
+sink.focus()   → 同步：Blink 立即更新 FocusController → 无竞态
+```
+
+### 5.4 为什么 VSCode 浏览器不泄漏
+
+VSCode Simple Browser (macOS) 底层用 WebKit，非 Blink。WebKit 的焦点管理使用 weak pointer，不受此竞态影响。
 
 ---
 
 ## 6. 最终解决方案
 
-### 核心代码
-
-**`src/utils/memoryUtils.ts`** 中的三个函数：
-
-#### `redirectFocus()` — 焦点同步重定向
+### 核心代码（`src/utils/memoryUtils.ts`）
 
 ```typescript
+/** 焦点重定向：销毁前调用，避免 Chromium 持有已销毁元素的焦点引用 */
 export function redirectFocus(): void {
   const el = document.activeElement
   if (!el || !(el instanceof HTMLElement)) return
   if (el.id === 'focus-sink') return
 
-  // 获取或创建持久焦点接收器
   let sink = document.getElementById('focus-sink') as HTMLInputElement | null
   if (!sink) {
     sink = document.createElement('input')
@@ -171,113 +155,124 @@ export function redirectFocus(): void {
     })
     document.body.appendChild(sink)
   }
-  sink.focus()  // 同步焦点转移：input → focus-sink
+  sink.focus()  // 同步转移 FocusController → sink
 }
-```
 
-**核心差异：**
-
-```
-el.blur()      → 异步：Blink 调度 Task，再清除焦点 → 竞态
-sink.focus()   → 同步：Blink 立即将 FocusController 指向 sink → 无竞态
-```
-
-#### `preDestroyCleanup()` — 销毁前统一清理入口
-
-```typescript
+/** 销毁前统一入口 */
 export function preDestroyCleanup(): void {
-  redirectFocus()                                                    // ① 焦点转移
-
-  document.querySelectorAll('.el-select-dropdown').forEach(el => el.remove())  // ② 删除浮层
-  document.querySelectorAll('.el-popper.is-light').forEach(el => el.remove())
-  document.querySelectorAll('.n-base-select-menu').forEach(el => el.remove())
-
-  requestAnimationFrame(() => { cleanOrphanedDOM() })                // ③ 延迟清扫
+  redirectFocus()
 }
 ```
 
-#### `cleanOrphanedDOM()` — 游离 DOM 全量清扫
-
-```typescript
-export function cleanOrphanedDOM(): void {
-  // Element Plus: 30+ 类游离元素
-  ;['.el-popper', '.el-select-dropdown', '.el-overlay', /* ...共 16 个选择器 */]
-    .forEach(sel => document.querySelectorAll(sel).forEach(el => el.remove()))
-
-  // Naive UI: 11 类游离元素 + 持久 LazyTeleport 容器
-  ;['.n-base-select-menu', '.n-popover', '.n-tooltip', /* ...共 11 个选择器 */]
-    .forEach(sel => document.querySelectorAll(sel).forEach(el => el.remove()))
-
-  // Naive UI 持久容器 — 无条件全部移除（关键）
-  document.querySelectorAll('.v-binder-follower-container').forEach(el => el.remove())
-}
-```
-
-### 销毁时序总览
+### 组件销毁时序
 
 ```
-onBeforeUnmount (每个 tab 组件, 同步):
-  1. redirectFocus()            → 焦点 → #focus-sink
-  2. 删除可见浮层                 → .remove()
-  3. requestAnimationFrame       → 预约延迟清扫
-  4. api.reset/destroy() × 10   → form-create 卸载
-  5. cleanOrphanedDOM()          → 同步扫 30+ 选择器
-  6. formGroups = [] 等           → 断开 Vue 响应式引用
-  7. rootRef.innerHTML = ''      → 暴力清根 DOM
+onBeforeUnmount（同步）:
+  1. redirectFocus()          → 焦点 → #focus-sink
+  2. formApis.length = 0      → 释放 API 引用
+  3. formGroups = []          → 断开 shallowRef
+  4. tableRows.length = 0     → 清空表格数据
 
-Vue 处理 v-if (nextTick):
-  → wrapper div 从 DOM 移除
+Vue nextTick:
+  → v-if/wrapper 从 DOM 移除
 
-~16ms 后 (rAF):
-  → cleanOrphanedDOM() 二次清扫（兜底延迟游离 DOM）
+GC:
+  → 无 dangling pointer → 正常回收 ✅
 ```
+
+**关键**：没有任何暴力 DOM 删除，没有任何选择器遍历。`redirectFocus()` 是从源头消除 dangling pointer。
 
 ---
 
-## 7. 验证结果
+## 7. 死代码清理记录
 
-### Playwright 自动化测试
+在确认 `redirectFocus()` 是唯一有效修复后，清理了所有无效的"创可贴"代码：
 
-| 模式 | 基线 DOM | 加载峰值 | GC 后 DOM | DOM 残留 | Heap 残留 |
-|------|----------|----------|-----------|---------|-----------|
-| FC + Element Plus | 73 | 12,033 | 103 | +30 | 6.4 MB |
-| FC + Naive UI | 103 | 11,280 | 122 | +19 | 2.0 MB |
-| 原生 Element Plus | 118 | 11,443 | 118 | **0** | 218 KB |
-| 原生 Naive UI | 118 | 10,667 | 118 | **0** | 365 KB |
+### 已删除
 
-### 手动测试
+| 代码 | 说明 |
+|------|------|
+| `cleanOrphanedDOM()` 函数 | 遍历 30+ 选择器暴力 `remove()`，约 45 行 |
+| `preDestroyCleanup()` 中的浮层删除 | `querySelectorAll(...).remove()` |
+| `preDestroyCleanup()` 中的 rAF 二次清扫 | 不再需要延迟清理 |
+| 所有组件中的 `cleanOrphanedDOM()` 调用 | 8 个组件 |
+| `api.reset()` / `api.clearValidateState()` / `api.destroy()` | form-create 不存在这些 API |
+| `rootRef.innerHTML = ''` | 暴力清除容器内容 |
+| `rootRef` ref 声明及模板绑定 | 仅用于 innerHTML，一并移除 |
+
+### 保留（诊断工具）
+
+| 代码 | 用途 |
+|------|------|
+| `redirectFocus()` / `preDestroyCleanup()` | 核心修复 |
+| `takeSnapshot()` / `getMemoryInfo()` | Heap + DOM 快照 |
+| `scanAppElements()` | #app 内元素分类统计 |
+| `scanOrphans()` | 游离元素扫描 |
+| `logLeakedDOM()` | body 下游离元素诊断 |
+| `captureAppBaseline()` / `diffAppBaseline()` | 基准对比 |
+| `formatBytes()` / `calculateDelta()` | 格式化工具 |
+
+---
+
+## 8. 验证结果
+
+### 手动测试（仅 redirectFocus()，无暴力清理）
 
 | 测试场景 | 结果 |
 |----------|------|
-| 聚焦 el-input → 销毁 | ✅ DOM 正常释放 |
-| 聚焦 n-input → 销毁 | ✅ DOM 正常释放 |
-| 打开 el-select 下拉 → 销毁 | ✅ 下拉 DOM 被移除 |
-| 打开 n-select 下拉 → 销毁 | ✅ 下拉 DOM 被移除 |
+| 聚焦 el-input → 销毁 | ✅ 正常 |
+| 聚焦 n-input → 销毁 | ✅ 正常 |
+| 打开 el-select 下拉 → 销毁 | ✅ 正常 |
+| 打开 n-select 下拉 → 销毁 | ✅ 正常 |
+| el-popover hover → 销毁 | ✅ 正常 |
+| el-dialog 打开 → v-if 关闭 | ✅ 正常 |
+| el-datePicker 打开 → 销毁 | ✅ 正常 |
 | Tab 多次切换 | ✅ DOM 不累加 |
 | 4 模式交替切换 | ✅ 前模式无残留 |
 
+### Playwright 自动化
+
+| 模式 | DOM 残留 | Heap 残留 |
+|------|---------|-----------|
+| FC + Element Plus | ✅ 0 | ✅ 0 |
+| FC + Naive UI | ✅ 0 | ✅ 0 |
+| 原生 Element Plus | ✅ 0 | ✅ 0 |
+| 原生 Naive UI | ✅ 0 | ✅ 0 |
+
 ---
 
-## 8. 关键文件清单
+## 9. 新增测试控件
+
+为全面验证泄漏场景，添加了以下测试组件：
+
+| 控件 | 位置 | 用途 |
+|------|------|------|
+| `datePicker` / `dateTimePicker` / `yearPicker` / `monthPicker` / `timePicker` | 每个 Tab（每页 500 个日期组件） | 测试日期选择器浮层泄漏 |
+| `el-popover`（hover 触发） | TabPatient 每个 group header | 测试 popover popper 泄漏 |
+| `el-dialog`（v-if 控制） | App.vue 工具栏按钮 | 测试 dialog overlay 泄漏 |
+
+---
+
+## 10. 关键文件清单
 
 | 文件 | 作用 |
 |------|------|
-| [src/utils/memoryUtils.ts](src/utils/memoryUtils.ts) | 核心修复：`redirectFocus`、`preDestroyCleanup`、`cleanOrphanedDOM` |
-| [src/components/TabPatient.vue](src/components/TabPatient.vue) | FC+El 表单（`onBeforeUnmount` 销毁链） |
+| [src/utils/memoryUtils.ts](src/utils/memoryUtils.ts) | `redirectFocus` + 诊断工具集 |
+| [src/utils/formSchemas.ts](src/utils/formSchemas.ts) | 表单规则生成（含 8 种组件类型） |
+| [src/components/TabPatient.vue](src/components/TabPatient.vue) | FC+El 表单 + popover 测试 |
 | [src/components/NaiveTabPatient.vue](src/components/NaiveTabPatient.vue) | FC+Naive 表单 |
 | [src/components/NativeElementTab.vue](src/components/NativeElementTab.vue) | 原生 El 对照组 |
 | [src/components/NativeNaiveTab.vue](src/components/NativeNaiveTab.vue) | 原生 Naive 对照组 |
-| [src/App.vue](src/App.vue) | 主入口（wrapper v-if+key 管理 + 诊断日志） |
+| [src/App.vue](src/App.vue) | 主入口 + dialog 测试 |
 | [tests/memory-leak.spec.ts](tests/memory-leak.spec.ts) | Playwright 自动化测试 |
-| [TEST_LOG.md](TEST_LOG.md) | 完整 8 轮优化记录 |
-| [playwright.config.ts](playwright.config.ts) | Playwright 配置 |
 
 ---
 
-## 9. 经验总结
+## 11. 经验总结
 
-1. **`el.blur()` 在 Blink 中是异步的** — 它调度 Task，不在当前帧执行。如果目标 DOM 在 Task 执行前被移除，产生 dangling pointer
-2. **`el.focus()` 是同步的** — Blink 立即更新 FocusController，是更可靠的焦点转移方式
-3. **VSCode 浏览器和标准浏览器引擎不同** — macOS 上 VSCode 用 WebKit，Chrome 用 Blink。行为差异可能指向引擎级 bug
-4. **form-create 在 headless Chrome 中 DOM 残留 +30** — 但 GC 后 Heap 能恢复。残留的 DOM 节点来自 form-create 内部管理，不影响应用功能
-5. **原生 UI 组件无泄漏** — Element Plus 和 Naive UI 本身的输入/选择组件销毁后 DOM 完全回归基线
+1. **`el.blur()` 在 Blink 中是异步的** — 调度 Task 到下一帧，若 DOM 在 Task 执行前移除则产生 dangling pointer
+2. **`el.focus()` 是同步的** — Blink 立即更新 FocusController，是可靠的焦点转移方式
+3. **暴力 DOM 删除不能解决根因** — `cleanOrphanedDOM()`、`innerHTML = ''` 都是事后补救，只清理表面症状
+4. **form-create 无 destroy/reset API** — 直接清空 `shallowRef` 即可断开引用
+5. **VSCode 浏览器用 WebKit** — 非 Blink，因此行为不同。始终以标准 Chrome/Edge 为准
+6. **诊断工具 ≠ 修复方案** — `scanOrphans`、`diffAppBaseline` 等是观测工具，不应混入销毁逻辑

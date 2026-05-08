@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, shallowRef, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 import { perfStore } from '../utils/store'
-import { takeSnapshot, preDestroyCleanup, cleanOrphanedDOM } from '../utils/memoryUtils'
+import { takeSnapshot, preDestroyCleanup } from '../utils/memoryUtils'
 import InlineTable from './InlineTable.vue'
 
 const GROUPS = 10
@@ -25,7 +25,6 @@ const tableColumns = [
 ]
 const tableRows = ref<Record<string, any>[]>([])
 
-const rootRef = ref<HTMLElement | null>(null)
 const totalFieldCount = GROUPS * 3 * FIELDS_PER_GROUP
 
 const OPTIONS_POOL = [
@@ -103,10 +102,6 @@ onBeforeUnmount(() => {
   formData.value = {}
   groups.value = []
   tableRows.value.length = 0
-  cleanOrphanedDOM()
-  if (rootRef.value) {
-    rootRef.value.innerHTML = ''
-  }
 })
 
 onUnmounted(() => {
@@ -117,7 +112,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="rootRef" class="tab-container">
+  <div class="tab-container">
     <div class="section" v-for="(fields, idx) in groups" :key="'nel-g-' + idx">
       <div class="section-header">原生 El 组件组 {{ idx + 1 }} - {{ fields.length }}个字段</div>
       <el-form label-width="100px" size="small" autocomplete="off">
