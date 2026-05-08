@@ -65,6 +65,22 @@ export function cleanOrphanedDOM(): void {
 /** 销毁表单前的综合清理 */
 export function preDestroyCleanup(): void {
   blurActiveElement()
+
+  // 防御性关闭所有 Element Plus select 下拉框
+  // 参考 useSelect.ts: onBeforeUnmount { dropdownMenuVisible.value = false }
+  // form-create 可能导致 el-select 的 onBeforeUnmount 不执行，手动兜底
+  document.querySelectorAll('.el-select-dropdown').forEach((el) => {
+    el.classList.add('is-hidden')
+    ;(el as HTMLElement).style.display = 'none'
+  })
+  document.querySelectorAll('.el-popper.is-light').forEach((el) => {
+    el.classList.add('is-hidden')
+    ;(el as HTMLElement).style.display = 'none'
+  })
+  // Naive UI
+  document.querySelectorAll('.n-base-select-menu').forEach((el) => {
+    ;(el as HTMLElement).style.display = 'none'
+  })
 }
 
 /** 扫描 #app 内元素，按标签+类名分组统计 */

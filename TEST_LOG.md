@@ -407,3 +407,39 @@ npx playwright test --config playwright.config.ts
 # 3. 查看报告
 cat test-output/memory-leak-report.md
 ```
+
+---
+
+## 第七轮优化 (v7: el-select 下拉框防御性关闭)
+
+**提交**: 待提交
+
+### 背景
+
+发现 Element Plus `useSelect.ts` 已有修复（`onBeforeUnmount { dropdownMenuVisible.value = false }`），2.13.7 已包含。但 form-create 可能阻断 el-select 的 `onBeforeUnmount` 执行，导致下拉框 DOM 在组件销毁时未被关闭。
+
+### 改动
+
+`preDestroyCleanup()` 增加防御性下拉框关闭逻辑：
+
+```ts
+export function preDestroyCleanup(): void {
+  blurActiveElement()
+  // 防御性关闭所有 select 下拉框（模拟 useSelect onBeforeUnmount）
+  document.querySelectorAll('.el-select-dropdown').forEach(el => {
+    el.classList.add('is-hidden')
+    ;(el as HTMLElement).style.display = 'none'
+  })
+  document.querySelectorAll('.el-popper.is-light').forEach(el => {
+    el.classList.add('is-hidden')
+    ;(el as HTMLElement).style.display = 'none'
+  })
+  document.querySelectorAll('.n-base-select-menu').forEach(el => {
+    ;(el as HTMLElement).style.display = 'none'
+  })
+}
+```
+
+### 测试结果
+
+待测试。
