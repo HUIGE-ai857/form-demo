@@ -2,10 +2,34 @@ import type { MemorySnapshot } from '../types'
 
 const snapshotHistory: MemorySnapshot[] = []
 
-/** 模糊当前焦点元素，关闭所有打开的下来框/弹出层 */
+/** 将焦点重定向到页面外的一个持久元素，避免 Chromium 持有已销毁元素的焦点引用 */
+export function redirectFocus(): void {
+  const el = document.activeElement
+  if (!el || !(el instanceof HTMLElement)) return
+
+  // 如果焦点已经在 sink 上或者不在表单内，跳过
+  if (el.id === 'focus-sink') return
+
+  let sink = document.getElementById('focus-sink') as HTMLInputElement | null
+  if (!sink) {
+    sink = document.createElement('input')
+    sink.id = 'focus-sink'
+    sink.type = 'text'
+    sink.tabIndex = -1
+    sink.setAttribute('aria-hidden', 'true')
+    Object.assign(sink.style, {
+      position: 'fixed', top: '-9999px', left: '-9999px',
+      width: '1px', height: '1px', opacity: '0', pointerEvents: 'none',
+    })
+    document.body.appendChild(sink)
+  }
+  sink.focus()
+}
+
+/** 模糊当前焦点元素 */
 export function blurActiveElement(): void {
   const el = document.activeElement
-  if (el && el instanceof HTMLElement) {
+  if (el && el instanceof HTMLElement && el.id !== 'focus-sink') {
     el.blur()
   }
 }
@@ -59,7 +83,8 @@ export function cleanOrphanedDOM(): void {
 
 /** 销毁表单前的综合清理：blur + 删除浮层 + rAF 延迟二次清扫 */
 export function preDestroyCleanup(): void {
-  blurActiveElement()
+  // 焦点重定向到持久元素：避免 Chromium 在表单销毁时持有已移除元素的焦点引用
+  redirectFocus()
 
   // 立即删除 Element Plus 浮层（不隐藏，直接移除）
   document.querySelectorAll('.el-select-dropdown').forEach((el) => el.remove())
