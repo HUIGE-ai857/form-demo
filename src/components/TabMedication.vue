@@ -3,7 +3,7 @@ import { ref, shallowRef, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 import type { FormRule } from '../types'
 import { generateFormGroups, getFormOption, getTableColumns, createEmptyRow } from '../utils/formSchemas'
 import { perfStore } from '../utils/store'
-import { takeSnapshot, preDestroyCleanup } from '../utils/memoryUtils'
+import { takeSnapshot, preDestroyCleanup, cleanOrphanedDOM } from '../utils/memoryUtils'
 import InlineTable from './InlineTable.vue'
 
 const GROUPS = 10
@@ -49,6 +49,7 @@ onBeforeUnmount(() => {
     try { api.clearValidateState() } catch (e) {}
     try { api.destroy() } catch (e) {}
   })
+  cleanOrphanedDOM()
   formApis.value.length = 0
   formGroups.value = []
   tableRows.value.length = 0

@@ -53,33 +53,24 @@ export function cleanOrphanedDOM(): void {
     document.querySelectorAll(sel).forEach((el) => el.remove())
   })
 
-  // 清理 v-binder 跟随容器 (Naive UI)
-  const followers = document.querySelectorAll('.v-binder-follower-container > .v-binder-follower-content')
-  followers.forEach((el) => {
-    if (el.children.length === 0) {
-      el.parentElement?.remove()
-    }
-  })
+  // Naive UI LazyTeleport 持久容器 — 创建后永不自行销毁，销毁时无条件移除
+  document.querySelectorAll('.v-binder-follower-container').forEach((el) => el.remove())
 }
 
-/** 销毁表单前的综合清理 */
+/** 销毁表单前的综合清理：blur + 删除浮层 + rAF 延迟二次清扫 */
 export function preDestroyCleanup(): void {
   blurActiveElement()
 
-  // 防御性关闭所有 Element Plus select 下拉框
-  // 参考 useSelect.ts: onBeforeUnmount { dropdownMenuVisible.value = false }
-  // form-create 可能导致 el-select 的 onBeforeUnmount 不执行，手动兜底
-  document.querySelectorAll('.el-select-dropdown').forEach((el) => {
-    el.classList.add('is-hidden')
-    ;(el as HTMLElement).style.display = 'none'
-  })
-  document.querySelectorAll('.el-popper.is-light').forEach((el) => {
-    el.classList.add('is-hidden')
-    ;(el as HTMLElement).style.display = 'none'
-  })
-  // Naive UI
-  document.querySelectorAll('.n-base-select-menu').forEach((el) => {
-    ;(el as HTMLElement).style.display = 'none'
+  // 立即删除 Element Plus 浮层（不隐藏，直接移除）
+  document.querySelectorAll('.el-select-dropdown').forEach((el) => el.remove())
+  document.querySelectorAll('.el-popper.is-light').forEach((el) => el.remove())
+
+  // 立即删除 Naive UI 浮层
+  document.querySelectorAll('.n-base-select-menu').forEach((el) => el.remove())
+
+  // rAF 延迟二次清扫：给浏览器一帧时间处理 blur 事件释放焦点引用
+  requestAnimationFrame(() => {
+    cleanOrphanedDOM()
   })
 }
 

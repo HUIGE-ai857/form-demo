@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, shallowRef, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 import { perfStore } from '../utils/store'
-import { takeSnapshot, preDestroyCleanup } from '../utils/memoryUtils'
+import { takeSnapshot, preDestroyCleanup, cleanOrphanedDOM } from '../utils/memoryUtils'
 import InlineTable from './InlineTable.vue'
 
 const GROUPS = 10
@@ -103,6 +103,7 @@ onBeforeUnmount(() => {
   formData.value = {}
   groups.value = []
   tableRows.value.length = 0
+  cleanOrphanedDOM()
   if (rootRef.value) {
     rootRef.value.innerHTML = ''
   }
