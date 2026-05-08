@@ -5,7 +5,7 @@ import TabContainer from './components/TabContainer.vue'
 import NaiveTabContainer from './components/NaiveTabContainer.vue'
 import NativeElementTab from './components/NativeElementTab.vue'
 import NativeNaiveTab from './components/NativeNaiveTab.vue'
-import { getMemoryInfo, takeSnapshot, formatBytes, getSnapshotHistory, captureDOMBaseline, logLeakedDOM, removeLeakedSinceBaseline, cleanOrphanedDOM, scanAppElements, scanOrphans, captureAppBaseline, diffAppBaseline } from './utils/memoryUtils'
+import { getMemoryInfo, takeSnapshot, formatBytes, getSnapshotHistory, logLeakedDOM, scanAppElements, scanOrphans, captureAppBaseline, diffAppBaseline } from './utils/memoryUtils'
 
 const uiMode = ref<'element' | 'naive' | 'native-el' | 'native-naive'>('element')
 const activeTab = ref('patient')
@@ -17,7 +17,6 @@ const formWrapper = ref<HTMLElement | null>(null)
 
 onMounted(() => {
   takeSnapshot('页面初始化(无表单)')
-  captureDOMBaseline()
   captureAppBaseline()
   scanAppElements('初始化基准')
 })

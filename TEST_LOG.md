@@ -443,3 +443,56 @@ export function preDestroyCleanup(): void {
 ### 测试结果
 
 待测试。
+
+---
+
+## 第八轮优化 (v8): redirectFocus — 最终修复
+
+**提交**: `fcf489d` + `a505526` + `33a6f62`
+
+### 根因分析
+
+**Chromium Blink 引擎的 FocusController 在 `el.blur()` 后异步释放焦点引用，DOM 移除是同步的。**
+
+时序问题：
+
+```
+1. input 获得焦点 (用户点击)
+   → Blink FocusController 持有 input 的 DOM 指针
+
+2. 用户点击 "销毁所有表单"
+3. onBeforeUnmount 同步执行:
+   a. el.blur()        → 调度异步焦点变更任务
+   b. api.destroy()    → form-create 内部卸载
+   c. formGroups = []  → v-for 清空
+   d. innerHTML = ''   → 暴力移除 DOM
+4. Vue v-if 销毁 wrapper → DOM 彻底从文档移除
+5. Blink 异步焦点任务执行 → 目标元素已不存在
+6. GC 无法回收 dangling reference → DOM 泄漏
+```
+
+`el.blur()` 只是告诉浏览器"当前失去焦点"，没有指定新目标。Blink 异步处理时如果原元素已销毁，"previous focused element" 缓存变为 dangling pointer。
+
+**为什么 `redirectFocus()` 能解决：**
+
+```ts
+const sink = document.getElementById('focus-sink') // body 底的持久 input
+sink.focus() // 同步焦点转移: 表单 input → focus-sink
+```
+
+`focus()` 是**同步焦点转移**——Blink 立刻将 FocusController 指向新目标。表单 DOM 销毁后，焦点在 `#focus-sink`（永不销毁），无 dangling reference。
+
+**为什么 VSCode 内置浏览器正常：**
+VSCode Simple Browser (macOS) 使用 WebKit 引擎，焦点管理用弱引用/不同的事件循环时序，不受此 bug 影响。
+
+### 改动汇总
+
+1. `redirectFocus()` — 焦点重定向替代 `blurActiveElement()`
+2. `preDestroyCleanup()` — 浮层隐藏→删除 + rAF 二次清扫
+3. `cleanOrphanedDOM()` — `.v-binder-follower-container` 无条件全部移除
+4. 所有 input `autocomplete="off" spellcheck="false"` (防御浏览器 autofill/spellcheck 引用)
+5. TabPatient.vue 恢复清理 + 全部 8 组件加 `cleanOrphanedDOM()`
+
+### 测试结果
+
+✅ **Chrome 标准浏览器测试通过** — 聚焦 input 后销毁表单，DOM 正常释放。

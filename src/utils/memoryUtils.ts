@@ -26,14 +26,6 @@ export function redirectFocus(): void {
   sink.focus()
 }
 
-/** 模糊当前焦点元素 */
-export function blurActiveElement(): void {
-  const el = document.activeElement
-  if (el && el instanceof HTMLElement && el.id !== 'focus-sink') {
-    el.blur()
-  }
-}
-
 /** 强制清理 Element Plus 和 Naive UI 产生的游离 DOM（popper/overlay 等） */
 export function cleanOrphanedDOM(): void {
   // Element Plus 游离元素
@@ -219,41 +211,6 @@ export function logLeakedDOM(label: string): string[] {
     leaked.push(summary)
   }
   console.log(`%c[DOM诊断] ${label}: body 下游离元素=${leaked.length}`, 'color: #E6A23C', leaked)
-  return leaked
-}
-
-/** 记录创建表单前的 DOM 基准（body children 快照） */
-let domBaseline: string[] = []
-export function captureDOMBaseline(): void {
-  domBaseline = []
-  const children = document.body.children
-  for (let i = 0; i < children.length; i++) {
-    const el = children[i]
-    if (el.id === 'app') continue
-    const id = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className ? '.' + Array.from(el.classList).slice(0, 2).join('.') : '')
-    domBaseline.push(id)
-  }
-  console.log(`%c[DOM基准] 记录 body 元素=${domBaseline.length}`, 'color: #909399', domBaseline)
-}
-
-/** 与基准比较，报告新增的游离元素并清理 */
-export function removeLeakedSinceBaseline(): string[] {
-  const leaked: string[] = []
-  const toRemove: Element[] = []
-  const children = document.body.children
-  for (let i = 0; i < children.length; i++) {
-    const el = children[i]
-    if (el.id === 'app') continue
-    const id = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className ? '.' + Array.from(el.classList).slice(0, 2).join('.') : '')
-    if (!domBaseline.includes(id)) {
-      leaked.push(id)
-      toRemove.push(el)
-    }
-  }
-  toRemove.forEach(el => el.remove())
-  if (leaked.length > 0) {
-    console.log(`%c[清理游离DOM] 移除 ${leaked.length} 个元素`, 'color: #67C23A', leaked)
-  }
   return leaked
 }
 
