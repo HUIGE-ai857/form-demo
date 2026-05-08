@@ -1,5 +1,63 @@
 import type { FormRule, TableColumnDef } from '../types'
 
+type DatePickerType = 'date' | 'datetime' | 'year' | 'month' | 'week' | 'daterange' | 'datetimerange' | 'monthrange' | 'yearrange'
+
+interface DateFieldConfig {
+  labels: string[]
+  pickerType?: DatePickerType
+  placeholder: string
+}
+
+const DATE_FIELD_CONFIGS: Record<string, DateFieldConfig> = {
+  datePicker: {
+    labels: ['出生日期', '入院日期', '出院日期', '手术日期', '检查日期', '报告日期', '采样日期', '随访日期', '预约日期', '建档日期',
+      '确诊日期', '转科日期', '会诊日期', '入院评估', '出院评估', '病程日期', '用药日期', '康复日期', '转院日期', '归档日期'],
+    pickerType: 'date',
+    placeholder: '请选择日期',
+  },
+  dateTimePicker: {
+    labels: ['手术开始', '手术结束', '入院时间', '出院时间', '会诊时间', '抢救时间', '转科时间', '报告时间',
+      '采样时间', '给药时间', '查房时间', '预约时间', '检查时间', '病程记录', '输液时间', '发药时间', '办理时间', '登记时间', '通知时间', '执行时间'],
+    pickerType: 'datetime',
+    placeholder: '请选择日期时间',
+  },
+  yearPicker: {
+    labels: ['出生年份', '入院年份', '手术年份', '初诊年份', '确诊年份', '随访年份', '化疗年份', '注册年份',
+      '建档年份', '毕业年份', '入职年份', '执业年份', '参保年份', '婚姻年份', '发病年份', '转归年份', '末次年份', '接种年份', '随诊年份', '获批年份'],
+    pickerType: 'year',
+    placeholder: '请选择年份',
+  },
+  monthPicker: {
+    labels: ['出生月份', '入院月份', '出院月份', '手术月份', '随访月份', '复查月份', '用药月份', '化疗月份',
+      '建档月份', '转科月份', '会诊月份', '预约月份', '评估月份', '考核月份', '体检月份', '接种月份', '筛查月份', '达标月份', '复诊月份', '归档月份'],
+    pickerType: 'month',
+    placeholder: '请选择月份',
+  },
+  timePicker: {
+    labels: ['查房时间', '给药时间', '采血时间', '输液开始', '输液结束', '术前时间', '术后时间', '换药时间',
+      '值班开始', '值班结束', '接诊时间', '出诊时间', '查体时间', '换班时间', '签到时间', '签退时间', '检验时间', '服药时间', '注射时间', '测血糖'],
+    placeholder: '请选择时间',
+  },
+}
+
+function createDateField(config: DateFieldConfig, field: string, idx: number): FormRule {
+  const label = config.labels[idx % config.labels.length]
+  const props: Record<string, any> = {
+    placeholder: config.placeholder,
+    clearable: true,
+  }
+  if (config.pickerType) {
+    props.type = config.pickerType
+  }
+  return {
+    type: 'datePicker',
+    field,
+    title: `${label} ${idx + 1}`,
+    value: '',
+    props,
+  }
+}
+
 function createField(type: string, prefix: string, groupIdx: number, fieldIdx: number): FormRule {
   const idx = groupIdx * 20 + fieldIdx
   const field = `${prefix}_${type}_${idx}`
@@ -53,6 +111,14 @@ function createField(type: string, prefix: string, groupIdx: number, fieldIdx: n
         },
       }
     }
+    case 'datePicker':
+    case 'dateTimePicker':
+    case 'yearPicker':
+    case 'monthPicker':
+    case 'timePicker': {
+      const config = DATE_FIELD_CONFIGS[type]
+      return createDateField(config, field, idx)
+    }
     default:
       return { type: 'input', field, title: `字段 ${idx + 1}`, value: '', props: {} }
   }
@@ -78,7 +144,7 @@ function getOptions(index: number) {
 export function generateFormGroups(
   prefix: string,
   groups: number,
-  types: ('input' | 'select' | 'textarea')[] = ['input', 'select', 'textarea'],
+  types: ('input' | 'select' | 'textarea' | 'datePicker' | 'dateTimePicker' | 'yearPicker' | 'monthPicker' | 'timePicker')[] = ['input', 'select', 'textarea'],
   fieldsPerGroup: number = 20
 ): FormRule[][] {
   const result: FormRule[][] = []

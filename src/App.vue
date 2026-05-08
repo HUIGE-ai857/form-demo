@@ -14,6 +14,7 @@ const tabKey = ref(0)
 const wrapperKey = ref(0)
 const switchCount = ref(0)
 const formWrapper = ref<HTMLElement | null>(null)
+const dialogVisible = ref(false)
 
 onMounted(() => {
   takeSnapshot('页面初始化(无表单)')
@@ -114,6 +115,7 @@ function switchMode(mode: 'element' | 'naive' | 'native-el' | 'native-naive') {
       <el-button :type="showForms ? 'danger' : 'success'" @click="toggleForms">
         {{ showForms ? '销毁所有表单' : '加载所有表单' }}
       </el-button>
+      <el-button type="warning" @click="dialogVisible = true">打开 Dialog</el-button>
       <span class="hint">UI: {{ uiMode }} | showForms={{ showForms }}</span>
     </div>
 
@@ -126,6 +128,22 @@ function switchMode(mode: 'element' | 'naive' | 'native-el' | 'native-naive') {
 
     <div class="test-banner" v-if="showForms">🟢 表单可见</div>
     <div class="test-banner test-hidden" v-else>🔴 表单已销毁</div>
+
+    <el-dialog
+      v-if="dialogVisible"
+      v-model="dialogVisible"
+      title="测试 Dialog 内存泄漏"
+      width="500px"
+      @close="dialogVisible = false"
+    >
+      <p>这是一个使用 v-if 控制的 el-dialog</p>
+      <p>关闭后观察 DOM 是否完全释放</p>
+      <el-input placeholder="随便输入一些内容" />
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="dialogVisible = false">确定</el-button>
+      </template>
+    </el-dialog>
 
     <div v-if="showForms" :key="'fw-' + wrapperKey" class="form-wrapper">
       <TabContainer v-if="uiMode === 'element'" :key="'el-' + tabKey" :active-tab="activeTab" :tab-key="tabKey" />

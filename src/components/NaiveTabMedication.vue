@@ -15,7 +15,7 @@ const formApis = ref<any[]>([])
 const tableColumns = getTableColumns('exam')
 const tableRows = ref<Record<string, any>[]>([])
 
-const totalFieldCount = GROUPS * 3 * FIELDS_PER_GROUP
+const totalFieldCount = GROUPS * 8 * FIELDS_PER_GROUP
 
 function initTable() {
   tableRows.value = Array.from({ length: 20 }, () => createEmptyRow(tableColumns))
@@ -30,7 +30,7 @@ function removeRow(index: number) {
 }
 
 onMounted(() => {
-  formGroups.value = generateFormGroups('n-med', GROUPS, ['input', 'select', 'textarea'], FIELDS_PER_GROUP)
+  formGroups.value = generateFormGroups('n-med', GROUPS, ['input', 'select', 'textarea', 'datePicker', 'dateTimePicker', 'yearPicker', 'monthPicker', 'timePicker'], FIELDS_PER_GROUP)
   formApis.value = new Array(formGroups.value.length).fill(null)
   initTable()
   perfStore.totalFieldCount = totalFieldCount

@@ -15,7 +15,7 @@ const formApis = ref<any[]>([])
 const tableColumns = getTableColumns('medication')
 const tableRows = ref<Record<string, any>[]>([])
 
-const totalFieldCount = GROUPS * 3 * FIELDS_PER_GROUP
+const totalFieldCount = GROUPS * 8 * FIELDS_PER_GROUP
 
 function initTable() {
   tableRows.value = Array.from({ length: 20 }, () => createEmptyRow(tableColumns))
@@ -30,7 +30,7 @@ function removeRow(index: number) {
 }
 
 onMounted(() => {
-  formGroups.value = generateFormGroups('pat', GROUPS, ['input', 'select', 'textarea'], FIELDS_PER_GROUP)
+  formGroups.value = generateFormGroups('pat', GROUPS, ['input', 'select', 'textarea', 'datePicker', 'dateTimePicker', 'yearPicker', 'monthPicker', 'timePicker'], FIELDS_PER_GROUP)
   formApis.value = new Array(formGroups.value.length).fill(null)
   initTable()
   perfStore.totalFieldCount = totalFieldCount
@@ -43,19 +43,19 @@ const rootRef = ref<HTMLElement | null>(null)
 
 onBeforeUnmount(() => {
   preDestroyCleanup()
-  formApis.value.forEach(api => {
-    if (!api) return
-    try { api.reset() } catch (e) {}
-    try { api.clearValidateState() } catch (e) {}
-    try { api.destroy() } catch (e) {}
-  })
-  cleanOrphanedDOM()
+  // formApis.value.forEach(api => {
+  //   if (!api) return
+  //   try { api.reset() } catch (e) {}
+  //   try { api.clearValidateState() } catch (e) {}
+  //   try { api.destroy() } catch (e) {}
+  // })
+  // cleanOrphanedDOM()
   formApis.value.length = 0
   formGroups.value = []
   tableRows.value.length = 0
-  if (rootRef.value) {
-    rootRef.value.innerHTML = ''
-  }
+  // if (rootRef.value) {
+  //   rootRef.value.innerHTML = ''
+  // }
 })
 
 onUnmounted(() => {
@@ -70,6 +70,11 @@ onUnmounted(() => {
     <div class="form-section" v-for="(rules, idx) in formGroups" :key="'pat-' + idx">
       <div class="section-header">
         患者信息组 {{ idx + 1 }} - {{ rules.length }}个字段
+        <el-popover placement="bottom" trigger="hover" :width="200" content="这是第{{ idx + 1 }}组患者信息表单">
+          <template #reference>
+            <el-button size="small" text type="primary" style="margin-left:8px">详情</el-button>
+          </template>
+        </el-popover>
       </div>
       <ElFormCreate :rule="rules" :option="formOption" v-model:api="formApis[idx]" />
     </div>

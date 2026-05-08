@@ -79,16 +79,16 @@ export function preDestroyCleanup(): void {
   redirectFocus()
 
   // 立即删除 Element Plus 浮层（不隐藏，直接移除）
-  document.querySelectorAll('.el-select-dropdown').forEach((el) => el.remove())
-  document.querySelectorAll('.el-popper.is-light').forEach((el) => el.remove())
+  // document.querySelectorAll('.el-select-dropdown').forEach((el) => el.remove())
+  // document.querySelectorAll('.el-popper.is-light').forEach((el) => el.remove())
 
-  // 立即删除 Naive UI 浮层
-  document.querySelectorAll('.n-base-select-menu').forEach((el) => el.remove())
+  // // 立即删除 Naive UI 浮层
+  // document.querySelectorAll('.n-base-select-menu').forEach((el) => el.remove())
 
   // rAF 延迟二次清扫：给浏览器一帧时间处理 blur 事件释放焦点引用
-  requestAnimationFrame(() => {
-    cleanOrphanedDOM()
-  })
+  // requestAnimationFrame(() => {
+    // cleanOrphanedDOM()
+  // })
 }
 
 /** 扫描 #app 内元素，按标签+类名分组统计 */
